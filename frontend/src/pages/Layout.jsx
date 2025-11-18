@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   ListChecks,
@@ -12,7 +11,7 @@ import {
   LogOut,
   Moon,
   Sun,
-  Menu
+  Menu,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,45 +32,29 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    loadUser();
-    
     // Check for saved theme preference
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
       setDarkMode(true);
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add("dark");
     }
   }, []);
-
-  const loadUser = async () => {
-    try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-    } catch (error) {
-      console.error("Error loading user:", error);
-    }
-  };
 
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
 
-  const handleLogout = () => {
-    base44.auth.logout();
+    if (newMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
   };
 
   const navigationItems = [
@@ -79,36 +62,36 @@ export default function Layout({ children, currentPageName }) {
       title: "Panel Principal",
       url: createPageUrl("Dashboard"),
       icon: LayoutDashboard,
-      roles: ["admin", "user"]
+      roles: ["superadmin", "admin", "user"],
     },
     {
       title: "Mis Actividades",
       url: createPageUrl("Activities"),
       icon: ListChecks,
-      roles: ["admin", "user"]
+      roles: ["superadmin", "admin", "user"],
     },
     {
       title: "Mis Proyectos",
       url: createPageUrl("Projects"),
       icon: FolderKanban,
-      roles: ["admin", "user"]
+      roles: ["superadmin", "admin", "user"],
     },
     {
       title: "Panel Administrativo",
       url: createPageUrl("Admin"),
       icon: Users,
-      roles: ["admin"]
+      roles: ["superadmin", "admin"],
     },
     {
       title: "Configuración",
       url: createPageUrl("Settings"),
       icon: Settings,
-      roles: ["admin", "user"]
-    }
+      roles: ["superadmin", "admin", "user"],
+    },
   ];
 
-  const filteredNav = navigationItems.filter(item => 
-    !user || item.roles.includes(user.role)
+  const filteredNav = navigationItems.filter(
+    (item) => !user || item.roles.includes(user.role)
   );
 
   return (
@@ -146,7 +129,7 @@ export default function Layout({ children, currentPageName }) {
           --border: 217.2 32.6% 17.5%;
         }
       `}</style>
-      
+
       <div className="min-h-screen flex w-full bg-background transition-colors duration-300">
         <Sidebar className="border-r border-border">
           <SidebarHeader className="border-b border-border p-4">
@@ -160,7 +143,7 @@ export default function Layout({ children, currentPageName }) {
               </div>
             </div>
           </SidebarHeader>
-          
+
           <SidebarContent className="p-2">
             <SidebarGroup>
               <SidebarGroupLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2 py-2">
@@ -170,13 +153,18 @@ export default function Layout({ children, currentPageName }) {
                 <SidebarMenu>
                   {filteredNav.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton 
-                        asChild 
+                      <SidebarMenuButton
+                        asChild
                         className={`hover:bg-accent hover:text-accent-foreground transition-colors duration-200 rounded-lg mb-1 ${
-                          location.pathname === item.url ? 'bg-accent text-accent-foreground font-medium' : ''
+                          location.pathname === item.url
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : ""
                         }`}
                       >
-                        <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
+                        <Link
+                          to={item.url}
+                          className="flex items-center gap-3 px-3 py-2"
+                        >
                           <item.icon className="w-4 h-4" />
                           <span>{item.title}</span>
                         </Link>
@@ -195,28 +183,36 @@ export default function Layout({ children, currentPageName }) {
               onClick={toggleDarkMode}
               className="w-full justify-start gap-2"
             >
-              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              {darkMode ? 'Modo Claro' : 'Modo Oscuro'}
+              {darkMode ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+              {darkMode ? "Modo Claro" : "Modo Oscuro"}
             </Button>
-            
+
             {user && (
               <div className="flex items-center gap-3 p-2 rounded-lg bg-muted">
                 <Avatar className="w-8 h-8">
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    {user.full_name?.[0]?.toUpperCase() || 'U'}
+                    {user.full_name?.[0]?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-foreground truncate">{user.full_name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  <p className="font-medium text-sm text-foreground truncate">
+                    {user.full_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.email}
+                  </p>
                 </div>
               </div>
             )}
-            
+
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleLogout}
+              onClick={logout}
               className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
             >
               <LogOut className="w-4 h-4" />
@@ -231,13 +227,13 @@ export default function Layout({ children, currentPageName }) {
               <SidebarTrigger className="hover:bg-accent p-2 rounded-lg transition-colors duration-200">
                 <Menu className="w-5 h-5" />
               </SidebarTrigger>
-              <h1 className="text-xl font-semibold text-foreground">TimeTracker</h1>
+              <h1 className="text-xl font-semibold text-foreground">
+                TimeTracker
+              </h1>
             </div>
           </header>
 
-          <div className="flex-1 overflow-auto bg-background">
-            {children}
-          </div>
+          <div className="flex-1 overflow-auto bg-background">{children}</div>
         </main>
       </div>
     </SidebarProvider>
