@@ -6,12 +6,11 @@ import apiClient from './client';
 export const authAPI = {
   /**
    * Login user
-   * @param {string} email
-   * @param {string} password
+   * @param {object} credentials - Object with email and password
    * @returns {Promise<{token: string, user: object}>}
    */
-  login: async (email, password) => {
-    const response = await apiClient.post('/auth/login', { email, password });
+  login: async (credentials) => {
+    const response = await apiClient.post('/auth/login', credentials);
     return response.data.data;
   },
 

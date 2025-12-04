@@ -7,6 +7,7 @@ import Settings from "./Settings";
 import Admin from "./Admin";
 import Login from "./Login";
 import Register from "./Register";
+import Calendar from "./Calendar";
 
 import {
   BrowserRouter as Router,
@@ -24,6 +25,7 @@ const PAGES = {
   Projects: Projects,
   Settings: Settings,
   Admin: Admin,
+  Calendar: Calendar,
 };
 
 function _getCurrentPage(url) {
@@ -115,6 +117,22 @@ function PagesContent() {
             </Layout>
           </ProtectedRoute>
         }
+      />
+
+      <Route
+        path="/Calendar"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName={currentPage}>
+              <Calendar />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/auth/callback"
+        element={<Navigate to="/Dashboard" replace />}
       />
     </Routes>
   );

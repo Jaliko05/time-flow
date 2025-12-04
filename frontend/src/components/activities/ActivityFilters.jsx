@@ -1,10 +1,16 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { projectsAPI } from "@/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Filter } from "lucide-react";
 
 const ACTIVITY_TYPES = [
@@ -18,16 +24,19 @@ const ACTIVITY_TYPES = [
   { value: "prototipado", label: "Prototipado" },
   { value: "disenos", label: "Diseños" },
   { value: "pruebas", label: "Pruebas" },
-  { value: "documentacion", label: "Documentación" }
+  { value: "documentacion", label: "Documentación" },
 ];
 
 export default function ActivityFilters({ filters, onFiltersChange, user }) {
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects', user?.email],
-    queryFn: () => base44.entities.Project.filter({ 
-      created_by: user?.email,
-      is_active: true 
-    }),
+    queryKey: ["projects", user?.id],
+    queryFn: () => projectsAPI.getAll({ active: true }),
+    select: (data) =>
+      data.filter(
+        (p) =>
+          (p.project_type === "personal" && p.created_by === user?.id) ||
+          (p.project_type === "area" && p.assigned_user_id === user?.id)
+      ),
     enabled: !!user,
   });
 
@@ -38,7 +47,7 @@ export default function ActivityFilters({ filters, onFiltersChange, user }) {
           <Filter className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-foreground">Filtros</h3>
         </div>
-        
+
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="month">Mes</Label>
@@ -46,7 +55,9 @@ export default function ActivityFilters({ filters, onFiltersChange, user }) {
               id="month"
               type="month"
               value={filters.month}
-              onChange={(e) => onFiltersChange({ ...filters, month: e.target.value })}
+              onChange={(e) =>
+                onFiltersChange({ ...filters, month: e.target.value })
+              }
             />
           </div>
 
@@ -54,14 +65,19 @@ export default function ActivityFilters({ filters, onFiltersChange, user }) {
             <Label htmlFor="project">Proyecto</Label>
             <Select
               value={filters.project_id || "all"}
-              onValueChange={(value) => onFiltersChange({ ...filters, project_id: value === "all" ? "" : value })}
+              onValueChange={(value) =>
+                onFiltersChange({
+                  ...filters,
+                  project_id: value === "all" ? "" : value,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos los proyectos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los proyectos</SelectItem>
-                {projects.map(project => (
+                {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
                   </SelectItem>
@@ -74,13 +90,18 @@ export default function ActivityFilters({ filters, onFiltersChange, user }) {
             <Label htmlFor="activity_type">Tipo de Actividad</Label>
             <Select
               value={filters.activity_type || "all"}
-              onValueChange={(value) => onFiltersChange({ ...filters, activity_type: value === "all" ? "" : value })}
+              onValueChange={(value) =>
+                onFiltersChange({
+                  ...filters,
+                  activity_type: value === "all" ? "" : value,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos los tipos" />
               </SelectTrigger>
               <SelectContent>
-                {ACTIVITY_TYPES.map(type => (
+                {ACTIVITY_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
                   </SelectItem>

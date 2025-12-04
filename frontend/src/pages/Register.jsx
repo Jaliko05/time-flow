@@ -73,9 +73,14 @@ export default function Register() {
     try {
       // Create user with role "user" by default
       await usersAPI.register({
-        ...formData,
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.full_name,
         role: "user",
-        area_id: formData.area_id ? parseInt(formData.area_id) : null,
+        area_id:
+          formData.area_id && formData.area_id !== "none"
+            ? parseInt(formData.area_id)
+            : null,
       });
 
       setSuccess(true);
@@ -188,14 +193,16 @@ export default function Register() {
               </Label>
               <Select
                 value={formData.area_id}
-                onValueChange={(value) => handleChange("area_id", value)}
+                onValueChange={(value) =>
+                  handleChange("area_id", value === "none" ? "" : value)
+                }
                 disabled={isLoading || success}
               >
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="Selecciona un área" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin área</SelectItem>
+                  <SelectItem value="none">Sin área</SelectItem>
                   {areas.map((area) => (
                     <SelectItem key={area.id} value={area.id.toString()}>
                       {area.name}

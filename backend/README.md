@@ -4,7 +4,9 @@ API REST para el sistema de gestión de tiempo Time Flow, construida con Go, Gin
 
 ## 🚀 Características
 
-- **Autenticación JWT** con roles (SuperAdmin, Admin, User)
+- **Autenticación Dual** - Login local (email/password) y Microsoft OAuth 2.0
+- **Integración con Microsoft Calendar** - Ver y convertir reuniones en actividades (opcional)
+- **JWT** con roles (SuperAdmin, Admin, User)
 - **Control de acceso por áreas** - SuperAdmin ve todo, Admin solo su área
 - **CRUD completo** para Usuarios, Áreas, Proyectos y Actividades
 - **Estadísticas** de actividades con filtros avanzados
@@ -41,6 +43,25 @@ cp .env.example .env
 # Editar .env con tus configuraciones
 ```
 
+Variables importantes:
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=timeflow
+
+# JWT
+JWT_SECRET=tu-secret-super-secreto
+JWT_EXPIRATION_HOURS=24
+
+# Microsoft OAuth (opcional, para autenticación con Microsoft)
+MICROSOFT_CLIENT_ID=tu-client-id-de-azure
+MICROSOFT_TENANT_ID=common
+```
+
 4. **Crear base de datos PostgreSQL**
 
 ```sql
@@ -69,8 +90,11 @@ make dev
 
 ### Autenticación
 
-- `POST /api/v1/auth/login` - Login de usuario
+- `POST /api/v1/auth/login` - Login local (email/password)
+- `POST /api/v1/auth/microsoft` - Login con Microsoft OAuth
+- `POST /api/v1/auth/register` - Registro público de usuarios
 - `GET /api/v1/auth/me` - Obtener información del usuario actual
+- `POST /api/v1/auth/superadmin` - Crear SuperAdmin (solo SuperAdmin)
 
 ### Áreas
 
@@ -105,26 +129,41 @@ make dev
 - `PUT /api/v1/activities/:id` - Actualizar actividad
 - `DELETE /api/v1/activities/:id` - Eliminar actividad
 
+### Calendario (Opcional - requiere Microsoft OAuth)
+
+- `POST /api/v1/calendar/events` - Obtener eventos del calendario
+- `POST /api/v1/calendar/today` - Obtener eventos de hoy
+
 ## 📚 Documentación Swagger
 
 Una vez iniciada la aplicación, accede a:
 
-- **Swagger UI**: http://localhost:8080/swagger/index.html
+**http://localhost:8080/swagger/index.html**
 
 ## 🔐 Autenticación
 
-La API usa JWT Bearer tokens. Para autenticarte:
+La API soporta **dos métodos de autenticación**:
 
-1. Hacer login en `/api/v1/auth/login`:
+### 1. Autenticación Local (Email/Password)
 
 ```json
+POST /api/v1/auth/login
 {
   "email": "admin@timeflow.com",
   "password": "admin123"
 }
 ```
 
-2. Usar el token en el header `Authorization`:
+### 2. Autenticación con Microsoft
+
+```json
+POST /api/v1/auth/microsoft
+{
+  "access_token": "EwBwA8l6BAAURSN/..."
+}
+```
+
+Ambos métodos retornan un JWT que debe usarse en el header `Authorization`:
 
 ```
 Authorization: Bearer <token>
@@ -156,42 +195,6 @@ Authorization: Bearer <token>
 - Acceso solo a sus propios datos
 - Puede crear y gestionar sus proyectos
 - Puede registrar y modificar sus actividades
-
-## 🗂️ Estructura del Proyecto
-
-```
-backend/
-├── config/          # Configuración de BD
-├── docs/            # Documentación Swagger (auto-generada)
-├── handlers/        # Controladores HTTP
-├── middleware/      # Middlewares (auth, cors, etc)
-├── models/          # Modelos de datos
-├── routes/          # Definición de rutas
-├── utils/           # Utilidades (JWT, responses)
-├── main.go          # Punto de entrada
-├── go.mod           # Dependencias Go
-└── .env.example     # Variables de entorno ejemplo
-```
-
-## 🛠️ Comandos Make
-
-```bash
-make help       # Mostrar ayuda
-make install    # Instalar dependencias
-make swagger    # Generar documentación Swagger
-make run        # Ejecutar aplicación
-make dev        # Generar docs y ejecutar
-make build      # Compilar aplicación
-make test       # Ejecutar tests
-make clean      # Limpiar archivos generados
-```
-
-## 🐳 Docker (Próximamente)
-
-```bash
-make docker-build   # Construir imagen
-make docker-run     # Ejecutar contenedor
-```
 
 ## 📝 Tipos de Actividades
 
@@ -237,6 +240,46 @@ El endpoint `/api/v1/activities/stats` proporciona:
 - Distribución por tipo de actividad
 - Distribución por área
 
+## 🗂️ Estructura del Proyecto
+
+```
+backend/
+├── config/          # Configuración de BD
+├── docs/            # Documentación Swagger (auto-generada)
+├── handlers/        # Controladores HTTP
+├── middleware/      # Middlewares (auth, cors, etc)
+├── models/          # Modelos de datos
+├── routes/          # Definición de rutas
+├── utils/           # Utilidades (JWT, responses, Microsoft)
+├── main.go          # Punto de entrada
+├── go.mod           # Dependencias Go
+├── .env             # Variables de entorno
+├── .env.example     # Variables de entorno ejemplo
+├── README.md        # Este archivo
+├── API.md           # Documentación detallada de endpoints
+└── FRONTEND.md      # Guía de implementación frontend
+```
+
+## 🛠️ Comandos Make
+
+```bash
+make help       # Mostrar ayuda
+make install    # Instalar dependencias
+make swagger    # Generar documentación Swagger
+make run        # Ejecutar aplicación
+make dev        # Generar docs y ejecutar
+make build      # Compilar aplicación
+make test       # Ejecutar tests
+make clean      # Limpiar archivos generados
+```
+
+## 🐳 Docker (Próximamente)
+
+```bash
+make docker-build   # Construir imagen
+make docker-run     # Ejecutar contenedor
+```
+
 ## 🤝 Contribuir
 
 1. Fork el proyecto
@@ -248,3 +291,10 @@ El endpoint `/api/v1/activities/stats` proporciona:
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT.
+
+---
+
+## 📖 Documentación Adicional
+
+- **[API.md](./API.md)** - Documentación completa de todos los endpoints, errores, y ejemplos
+- **[FRONTEND.md](./FRONTEND.md)** - Guía de implementación frontend con React, autenticación y calendario

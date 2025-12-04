@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jaliko05/time-flow/config"
 	"github.com/jaliko05/time-flow/models"
@@ -58,6 +60,120 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	token, err := utils.GenerateToken(&user)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed to generate token")
+		return
+	}
+
+	response := LoginResponse{
+		Token: token,
+		User: UserResponse{
+			ID:           user.ID,
+			Email:        user.Email,
+			FullName:     user.FullName,
+			Role:         user.Role,
+			AreaID:       user.AreaID,
+			Area:         user.Area,
+			WorkSchedule: user.WorkSchedule,
+			LunchBreak:   user.LunchBreak,
+			IsActive:     user.IsActive,
+		},
+	}
+
+	utils.SuccessResponse(c, 200, "Login successful", response)
+}
+
+type MicrosoftLoginRequest struct {
+	AccessToken string `json:"access_token" binding:"required"`
+}
+
+// MicrosoftLogin godoc
+// @Summary Login with Microsoft
+// @Description Authenticate user with Microsoft access token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body MicrosoftLoginRequest true "Microsoft access token"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /auth/microsoft [post]
+func MicrosoftLogin(c *gin.Context) {
+	var req MicrosoftLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, 400, err.Error())
+		return
+	}
+
+	// Validate Microsoft token and get user info
+	msUserInfo, err := utils.ValidateMicrosoftToken(req.AccessToken)
+	if err != nil {
+		utils.ErrorResponse(c, 401, "Invalid Microsoft token: "+err.Error())
+		return
+	}
+
+	// Look for existing user by Microsoft ID or email
+	var user models.User
+	result := config.DB.Preload("Area").Where("microsoft_id = ? OR (email = ? AND auth_provider = ?)",
+		msUserInfo.ID, msUserInfo.Mail, "microsoft").First(&user)
+
+	if result.Error != nil {
+		// User doesn't exist, create new user
+		fullName := msUserInfo.DisplayName
+		if fullName == "" {
+			fullName = msUserInfo.GivenName + " " + msUserInfo.Surname
+		}
+
+		user = models.User{
+			Email:                msUserInfo.Mail,
+			FullName:             fullName,
+			Role:                 models.RoleUser, // Default role
+			MicrosoftID:          &msUserInfo.ID,
+			MicrosoftAccessToken: &req.AccessToken,
+			AuthProvider:         "microsoft",
+			IsActive:             true,
+		}
+
+		if err := config.DB.Create(&user).Error; err != nil {
+			utils.ErrorResponse(c, 500, "Failed to create user")
+			return
+		}
+
+		// Reload to get Area relation
+		config.DB.Preload("Area").First(&user, user.ID)
+	} else {
+		// User exists, check if active
+		if !user.IsActive {
+			utils.ErrorResponse(c, 401, "User account is inactive")
+			return
+		}
+
+		// Update Microsoft ID and token if needed
+		if user.MicrosoftID == nil || *user.MicrosoftID == "" {
+			user.MicrosoftID = &msUserInfo.ID
+		}
+		// Always update the access token on login
+		user.MicrosoftAccessToken = &req.AccessToken
+		user.AuthProvider = "microsoft"
+
+		log.Printf("Updating user %d with Microsoft token (length: %d)", user.ID, len(req.AccessToken))
+
+		// Save with specific fields to ensure update
+		if err := config.DB.Model(&user).Updates(map[string]interface{}{
+			"microsoft_id":           user.MicrosoftID,
+			"microsoft_access_token": user.MicrosoftAccessToken,
+			"auth_provider":          user.AuthProvider,
+		}).Error; err != nil {
+			log.Printf("Error updating user token: %v", err)
+			utils.ErrorResponse(c, 500, "Failed to update user token")
+			return
+		}
+
+		log.Printf("Successfully updated user %d Microsoft token", user.ID)
+	}
+
+	// Generate JWT token
 	token, err := utils.GenerateToken(&user)
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed to generate token")

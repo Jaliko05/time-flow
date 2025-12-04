@@ -1,10 +1,16 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { projectsAPI } from "@/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Filter } from "lucide-react";
 
 const ACTIVITY_TYPES = [
@@ -18,16 +24,16 @@ const ACTIVITY_TYPES = [
   { value: "prototipado", label: "Prototipado" },
   { value: "disenos", label: "Diseños" },
   { value: "pruebas", label: "Pruebas" },
-  { value: "documentacion", label: "Documentación" }
+  { value: "documentacion", label: "Documentación" },
 ];
 
 export default function AdminFilters({ filters, onFiltersChange, allUsers }) {
   const { data: allProjects = [] } = useQuery({
-    queryKey: ['allProjects'],
-    queryFn: () => base44.entities.Project.filter({ is_active: true }),
+    queryKey: ["allProjects"],
+    queryFn: () => projectsAPI.getAll({ active: true }),
   });
 
-  const uniqueTeams = [...new Set(allUsers.map(u => u.team).filter(Boolean))];
+  const uniqueTeams = [...new Set(allUsers.map((u) => u.team).filter(Boolean))];
 
   return (
     <Card className="border-border">
@@ -36,7 +42,7 @@ export default function AdminFilters({ filters, onFiltersChange, allUsers }) {
           <Filter className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-foreground">Filtros Avanzados</h3>
         </div>
-        
+
         <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="space-y-2">
             <Label htmlFor="month">Mes</Label>
@@ -44,7 +50,9 @@ export default function AdminFilters({ filters, onFiltersChange, allUsers }) {
               id="month"
               type="month"
               value={filters.month}
-              onChange={(e) => onFiltersChange({ ...filters, month: e.target.value })}
+              onChange={(e) =>
+                onFiltersChange({ ...filters, month: e.target.value })
+              }
             />
           </div>
 
@@ -52,14 +60,19 @@ export default function AdminFilters({ filters, onFiltersChange, allUsers }) {
             <Label htmlFor="user">Usuario</Label>
             <Select
               value={filters.user_email || "all"}
-              onValueChange={(value) => onFiltersChange({ ...filters, user_email: value === "all" ? "" : value })}
+              onValueChange={(value) =>
+                onFiltersChange({
+                  ...filters,
+                  user_email: value === "all" ? "" : value,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los usuarios</SelectItem>
-                {allUsers.map(user => (
+                {allUsers.map((user) => (
                   <SelectItem key={user.email} value={user.email}>
                     {user.full_name}
                   </SelectItem>
@@ -72,14 +85,19 @@ export default function AdminFilters({ filters, onFiltersChange, allUsers }) {
             <Label htmlFor="team">Equipo</Label>
             <Select
               value={filters.team || "all"}
-              onValueChange={(value) => onFiltersChange({ ...filters, team: value === "all" ? "" : value })}
+              onValueChange={(value) =>
+                onFiltersChange({
+                  ...filters,
+                  team: value === "all" ? "" : value,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los equipos</SelectItem>
-                {uniqueTeams.map(team => (
+                {uniqueTeams.map((team) => (
                   <SelectItem key={team} value={team}>
                     {team}
                   </SelectItem>
@@ -92,13 +110,18 @@ export default function AdminFilters({ filters, onFiltersChange, allUsers }) {
             <Label htmlFor="activity_type">Tipo</Label>
             <Select
               value={filters.activity_type || "all"}
-              onValueChange={(value) => onFiltersChange({ ...filters, activity_type: value === "all" ? "" : value })}
+              onValueChange={(value) =>
+                onFiltersChange({
+                  ...filters,
+                  activity_type: value === "all" ? "" : value,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                {ACTIVITY_TYPES.map(type => (
+                {ACTIVITY_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
                   </SelectItem>
@@ -111,14 +134,19 @@ export default function AdminFilters({ filters, onFiltersChange, allUsers }) {
             <Label htmlFor="project">Proyecto</Label>
             <Select
               value={filters.project_id || "all"}
-              onValueChange={(value) => onFiltersChange({ ...filters, project_id: value === "all" ? "" : value })}
+              onValueChange={(value) =>
+                onFiltersChange({
+                  ...filters,
+                  project_id: value === "all" ? "" : value,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los proyectos</SelectItem>
-                {allProjects.map(project => (
+                {allProjects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
                   </SelectItem>

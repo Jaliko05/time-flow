@@ -180,7 +180,7 @@ func GetActivity(c *gin.Context) {
 
 // CreateActivity godoc
 // @Summary Create new activity
-// @Description Create a new time tracking activity
+// @Description Create a new time tracking activity (Users only)
 // @Tags activities
 // @Accept json
 // @Produce json
@@ -189,11 +189,20 @@ func GetActivity(c *gin.Context) {
 // @Success 201 {object} utils.Response{data=models.Activity}
 // @Failure 400 {object} utils.Response
 // @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
 // @Router /activities [post]
 func CreateActivity(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	userEmail, _ := c.Get("user_email")
 	userAreaID, _ := c.Get("user_area_id")
+	userRole, _ := c.Get("user_role")
+
+	// Only users can create activities
+	role := userRole.(models.Role)
+	if role != models.RoleUser {
+		utils.ErrorResponse(c, 403, "Only users can register activities")
+		return
+	}
 
 	var req CreateActivityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -213,6 +222,44 @@ func CreateActivity(c *gin.Context) {
 	if err := config.DB.First(&user, userID).Error; err != nil {
 		utils.ErrorResponse(c, 404, "User not found")
 		return
+	}
+
+	// If project_id is provided, validate user is assigned to it and update project hours
+	if req.ProjectID != nil {
+		var project models.Project
+		if err := config.DB.First(&project, req.ProjectID).Error; err != nil {
+			utils.ErrorResponse(c, 404, "Project not found")
+			return
+		}
+
+		// Validate project status allows activity registration
+		if !project.CanRegisterActivity() {
+			utils.ErrorResponse(c, 403, "Can only register activities for projects that are in progress or completed")
+			return
+		}
+
+		// Validate user is assigned to this project or it's their personal project
+		if project.ProjectType == models.ProjectTypePersonal {
+			// For personal projects, only the creator can register activities
+			if project.CreatedBy != userID.(uint) {
+				utils.ErrorResponse(c, 403, "You can only register activities for your own personal projects")
+				return
+			}
+		} else {
+			// For area projects, user must be assigned to it
+			if project.AssignedUserID == nil || *project.AssignedUserID != userID.(uint) {
+				utils.ErrorResponse(c, 403, "You are not assigned to this project")
+				return
+			}
+		}
+
+		// Update project hours
+		project.UsedHours += req.ExecutionTime
+		project.RemainingHours = project.EstimatedHours - project.UsedHours
+		if project.EstimatedHours > 0 {
+			project.CompletionPercent = (project.UsedHours / project.EstimatedHours) * 100
+		}
+		config.DB.Save(&project)
 	}
 
 	activity := models.Activity{
@@ -244,7 +291,7 @@ func CreateActivity(c *gin.Context) {
 
 // UpdateActivity godoc
 // @Summary Update activity
-// @Description Update activity information
+// @Description Update activity information (Owner only)
 // @Tags activities
 // @Accept json
 // @Produce json
@@ -254,12 +301,12 @@ func CreateActivity(c *gin.Context) {
 // @Success 200 {object} utils.Response{data=models.Activity}
 // @Failure 400 {object} utils.Response
 // @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
 // @Failure 404 {object} utils.Response
 // @Router /activities/{id} [put]
 func UpdateActivity(c *gin.Context) {
 	id := c.Param("id")
 	currentUserID, _ := c.Get("user_id")
-	userRole, _ := c.Get("user_role")
 
 	var req UpdateActivityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -273,11 +320,25 @@ func UpdateActivity(c *gin.Context) {
 		return
 	}
 
-	// Check permissions: only activity owner or admin/superadmin can update
-	role := userRole.(models.Role)
-	if role == models.RoleUser && activity.UserID != currentUserID.(uint) {
+	// Only activity owner can update
+	if activity.UserID != currentUserID.(uint) {
 		utils.ErrorResponse(c, 403, "Only activity owner can update")
 		return
+	}
+
+	// If execution time changed and there's a project, update project hours
+	if req.ExecutionTime != nil && activity.ProjectID != nil {
+		var project models.Project
+		if err := config.DB.First(&project, activity.ProjectID).Error; err == nil {
+			// Remove old time and add new time
+			project.UsedHours -= activity.ExecutionTime
+			project.UsedHours += *req.ExecutionTime
+			project.RemainingHours = project.EstimatedHours - project.UsedHours
+			if project.EstimatedHours > 0 {
+				project.CompletionPercent = (project.UsedHours / project.EstimatedHours) * 100
+			}
+			config.DB.Save(&project)
+		}
 	}
 
 	// Update fields
@@ -320,19 +381,19 @@ func UpdateActivity(c *gin.Context) {
 
 // DeleteActivity godoc
 // @Summary Delete activity
-// @Description Soft delete an activity
+// @Description Soft delete an activity (Owner only)
 // @Tags activities
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Activity ID"
 // @Success 200 {object} utils.Response
 // @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
 // @Failure 404 {object} utils.Response
 // @Router /activities/{id} [delete]
 func DeleteActivity(c *gin.Context) {
 	id := c.Param("id")
 	currentUserID, _ := c.Get("user_id")
-	userRole, _ := c.Get("user_role")
 
 	var activity models.Activity
 	if err := config.DB.First(&activity, id).Error; err != nil {
@@ -340,11 +401,23 @@ func DeleteActivity(c *gin.Context) {
 		return
 	}
 
-	// Check permissions
-	role := userRole.(models.Role)
-	if role == models.RoleUser && activity.UserID != currentUserID.(uint) {
+	// Only activity owner can delete
+	if activity.UserID != currentUserID.(uint) {
 		utils.ErrorResponse(c, 403, "Only activity owner can delete")
 		return
+	}
+
+	// If activity has a project, update project hours
+	if activity.ProjectID != nil {
+		var project models.Project
+		if err := config.DB.First(&project, activity.ProjectID).Error; err == nil {
+			project.UsedHours -= activity.ExecutionTime
+			project.RemainingHours = project.EstimatedHours - project.UsedHours
+			if project.EstimatedHours > 0 {
+				project.CompletionPercent = (project.UsedHours / project.EstimatedHours) * 100
+			}
+			config.DB.Save(&project)
+		}
 	}
 
 	if err := config.DB.Delete(&activity).Error; err != nil {

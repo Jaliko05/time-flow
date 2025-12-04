@@ -4,6 +4,7 @@ export { usersAPI } from './users';
 export { areasAPI } from './areas';
 export { projectsAPI } from './projects';
 export { activitiesAPI } from './activities';
+export { statsAPI } from './stats';
 export { default as apiClient } from './client';
 
 // Backward compatibility - simulate Base44 structure
@@ -17,7 +18,7 @@ export const base44 = {
       return await authAPI.me();
     },
     login: async (email, password) => {
-      const result = await authAPI.login(email, password);
+      const result = await authAPI.login({ email, password });
       return result.user;
     },
     logout: () => {

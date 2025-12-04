@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authAPI } from "@/api";
+import authService from "@/services/authService";
 
 const AuthContext = createContext(null);
 
@@ -49,16 +50,24 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const loginMicrosoft = async () => {
+    const response = await authService.loginMicrosoft();
+    if (response.user) {
+      setUser(response.user);
+    }
+    return response;
+  };
+
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
-    window.location.href = "/login";
   };
 
   const value = {
     user,
     loading,
     login,
+    loginMicrosoft,
     logout,
     checkAuth,
   };

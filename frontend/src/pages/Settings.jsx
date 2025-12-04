@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { authAPI, usersAPI } from "@/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +17,13 @@ import { Clock, User as UserIcon, Bell, Save, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const DAYS = [
-  { key: 'monday', label: 'Lunes' },
-  { key: 'tuesday', label: 'Martes' },
-  { key: 'wednesday', label: 'Miércoles' },
-  { key: 'thursday', label: 'Jueves' },
-  { key: 'friday', label: 'Viernes' },
-  { key: 'saturday', label: 'Sábado' },
-  { key: 'sunday', label: 'Domingo' }
+  { key: "monday", label: "Lunes" },
+  { key: "tuesday", label: "Martes" },
+  { key: "wednesday", label: "Miércoles" },
+  { key: "thursday", label: "Jueves" },
+  { key: "friday", label: "Viernes" },
+  { key: "saturday", label: "Sábado" },
+  { key: "sunday", label: "Domingo" },
 ];
 
 export default function Settings() {
@@ -32,17 +38,17 @@ export default function Settings() {
 
   const loadUser = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await authAPI.me();
       setUser(currentUser);
       setFormData({
-        team: currentUser.team || 'General',
+        team: currentUser.team || "General",
         work_schedule: currentUser.work_schedule || {},
         lunch_break: currentUser.lunch_break || {
-          start: '13:00',
-          end: '14:00',
-          enabled: true
+          start: "13:00",
+          end: "14:00",
+          enabled: true,
         },
-        notifications_enabled: currentUser.notifications_enabled ?? true
+        notifications_enabled: currentUser.notifications_enabled ?? true,
       });
     } catch (error) {
       console.error("Error loading user:", error);
@@ -50,7 +56,7 @@ export default function Settings() {
   };
 
   const updateUserMutation = useMutation({
-    mutationFn: (data) => base44.auth.updateMe(data),
+    mutationFn: (data) => usersAPI.update(user.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries();
       setSaveSuccess(true);
@@ -63,15 +69,15 @@ export default function Settings() {
   };
 
   const updateSchedule = (day, field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       work_schedule: {
         ...prev.work_schedule,
         [day]: {
           ...prev.work_schedule[day],
-          [field]: value
-        }
-      }
+          [field]: value,
+        },
+      },
     }));
   };
 
@@ -138,7 +144,9 @@ export default function Settings() {
                   <Input
                     id="team"
                     value={formData.team}
-                    onChange={(e) => setFormData(prev => ({ ...prev, team: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, team: e.target.value }))
+                    }
                     placeholder="Ej: Desarrollo, Diseño, Marketing..."
                   />
                 </div>
@@ -160,30 +168,47 @@ export default function Settings() {
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   {DAYS.map(({ key, label }) => (
-                    <div key={key} className="flex items-center gap-4 p-4 border border-border rounded-lg">
+                    <div
+                      key={key}
+                      className="flex items-center gap-4 p-4 border border-border rounded-lg"
+                    >
                       <div className="flex items-center gap-3 w-32">
                         <Switch
-                          checked={formData.work_schedule[key]?.enabled || false}
-                          onCheckedChange={(checked) => updateSchedule(key, 'enabled', checked)}
+                          checked={
+                            formData.work_schedule[key]?.enabled || false
+                          }
+                          onCheckedChange={(checked) =>
+                            updateSchedule(key, "enabled", checked)
+                          }
                         />
                         <Label className="font-medium">{label}</Label>
                       </div>
                       <div className="flex-1 flex items-center gap-4">
                         <div className="flex-1">
-                          <Label className="text-xs text-muted-foreground">Inicio</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            Inicio
+                          </Label>
                           <Input
                             type="time"
-                            value={formData.work_schedule[key]?.start || '09:00'}
-                            onChange={(e) => updateSchedule(key, 'start', e.target.value)}
+                            value={
+                              formData.work_schedule[key]?.start || "09:00"
+                            }
+                            onChange={(e) =>
+                              updateSchedule(key, "start", e.target.value)
+                            }
                             disabled={!formData.work_schedule[key]?.enabled}
                           />
                         </div>
                         <div className="flex-1">
-                          <Label className="text-xs text-muted-foreground">Fin</Label>
+                          <Label className="text-xs text-muted-foreground">
+                            Fin
+                          </Label>
                           <Input
                             type="time"
-                            value={formData.work_schedule[key]?.end || '18:00'}
-                            onChange={(e) => updateSchedule(key, 'end', e.target.value)}
+                            value={formData.work_schedule[key]?.end || "18:00"}
+                            onChange={(e) =>
+                              updateSchedule(key, "end", e.target.value)
+                            }
                             disabled={!formData.work_schedule[key]?.enabled}
                           />
                         </div>
@@ -193,21 +218,26 @@ export default function Settings() {
                 </div>
 
                 <div className="border-t border-border pt-6">
-                  <h3 className="font-medium text-foreground mb-4">Hora de Almuerzo</h3>
+                  <h3 className="font-medium text-foreground mb-4">
+                    Hora de Almuerzo
+                  </h3>
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <Switch
                         checked={formData.lunch_break?.enabled || false}
-                        onCheckedChange={(checked) => 
-                          setFormData(prev => ({
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({
                             ...prev,
-                            lunch_break: { ...prev.lunch_break, enabled: checked }
+                            lunch_break: {
+                              ...prev.lunch_break,
+                              enabled: checked,
+                            },
                           }))
                         }
                       />
                       <Label>Descontar hora de almuerzo</Label>
                     </div>
-                    
+
                     {formData.lunch_break?.enabled && (
                       <div className="flex gap-4">
                         <div className="flex-1">
@@ -215,10 +245,13 @@ export default function Settings() {
                           <Input
                             type="time"
                             value={formData.lunch_break.start}
-                            onChange={(e) => 
-                              setFormData(prev => ({
+                            onChange={(e) =>
+                              setFormData((prev) => ({
                                 ...prev,
-                                lunch_break: { ...prev.lunch_break, start: e.target.value }
+                                lunch_break: {
+                                  ...prev.lunch_break,
+                                  start: e.target.value,
+                                },
                               }))
                             }
                           />
@@ -228,10 +261,13 @@ export default function Settings() {
                           <Input
                             type="time"
                             value={formData.lunch_break.end}
-                            onChange={(e) => 
-                              setFormData(prev => ({
+                            onChange={(e) =>
+                              setFormData((prev) => ({
                                 ...prev,
-                                lunch_break: { ...prev.lunch_break, end: e.target.value }
+                                lunch_break: {
+                                  ...prev.lunch_break,
+                                  end: e.target.value,
+                                },
                               }))
                             }
                           />
@@ -265,8 +301,11 @@ export default function Settings() {
                   </div>
                   <Switch
                     checked={formData.notifications_enabled}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, notifications_enabled: checked }))
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        notifications_enabled: checked,
+                      }))
                     }
                   />
                 </div>
@@ -276,8 +315,8 @@ export default function Settings() {
         </Tabs>
 
         <div className="flex justify-end">
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             className="gap-2"
             disabled={updateUserMutation.isPending}
           >

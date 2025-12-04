@@ -30,6 +30,7 @@ func SetupRoutes(router *gin.Engine) {
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/login", handlers.Login)
+			auth.POST("/microsoft", handlers.MicrosoftLogin)
 			auth.POST("/register", handlers.Register) // Public registration
 		}
 
@@ -72,6 +73,7 @@ func SetupRoutes(router *gin.Engine) {
 				projects.GET("/:id", handlers.GetProject)
 				projects.POST("", handlers.CreateProject)
 				projects.PUT("/:id", handlers.UpdateProject)
+				projects.PATCH("/:id/status", handlers.UpdateProjectStatus)
 				projects.DELETE("/:id", handlers.DeleteProject)
 			}
 
@@ -84,6 +86,22 @@ func SetupRoutes(router *gin.Engine) {
 				activities.POST("", handlers.CreateActivity)
 				activities.PUT("/:id", handlers.UpdateActivity)
 				activities.DELETE("/:id", handlers.DeleteActivity)
+			}
+
+			// Stats routes (Admin and SuperAdmin only)
+			stats := protected.Group("/stats")
+			stats.Use(middleware.RequireRole(models.RoleSuperAdmin, models.RoleAdmin))
+			{
+				stats.GET("/areas", handlers.GetAreasSummary)
+				stats.GET("/users", handlers.GetUsersSummary)
+				stats.GET("/projects", handlers.GetProjectsSummary)
+			}
+
+			// Calendar routes (cualquier usuario autenticado puede ver SU calendario)
+			calendar := protected.Group("/calendar")
+			{
+				calendar.POST("/events", handlers.GetCalendarEvents)
+				calendar.GET("/today", handlers.GetTodayCalendarEvents)
 			}
 		}
 	}

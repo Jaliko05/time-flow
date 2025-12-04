@@ -53,4 +53,15 @@ export const projectsAPI = {
   delete: async (id) => {
     await apiClient.delete(`/projects/${id}`);
   },
+
+  /**
+   * Update project status
+   * @param {number} id
+   * @param {string} status - unassigned, assigned, in_progress, paused, completed
+   * @returns {Promise<object>}
+   */
+  updateStatus: async (id, status) => {
+    const response = await apiClient.patch(`/projects/${id}/status`, { status });
+    return response.data.data;
+  },
 };

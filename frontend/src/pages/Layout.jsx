@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   Menu,
+  CalendarDays,
 } from "lucide-react";
 import {
   Sidebar,
@@ -77,6 +78,12 @@ export default function Layout({ children, currentPageName }) {
       roles: ["superadmin", "admin", "user"],
     },
     {
+      title: "Calendario",
+      url: createPageUrl("Calendar"),
+      icon: CalendarDays,
+      roles: ["superadmin", "admin", "user"],
+    },
+    {
       title: "Panel Administrativo",
       url: createPageUrl("Admin"),
       icon: Users,
@@ -138,7 +145,7 @@ export default function Layout({ children, currentPageName }) {
                 <ListChecks className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="font-bold text-foreground">TimeTracker</h2>
+                <h2 className="font-bold text-foreground">Sistemas gyg</h2>
                 <p className="text-xs text-muted-foreground">Gestión Laboral</p>
               </div>
             </div>

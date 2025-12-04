@@ -110,12 +110,12 @@ func GetUser(c *gin.Context) {
 
 // CreateUser godoc
 // @Summary Create new user
-// @Description Create a new user (Admin/SuperAdmin only). Admins can only create users in their area with role 'user'.
+// @Description Create a new user. SuperAdmin can create any role in any area. Admin can only create 'user' role in their own area.
 // @Tags users
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param user body CreateUserRequest true "User data"
+// @Param user body CreateUserRequest true "User data - SuperAdmin can set any role (user/admin/superadmin), Admin can only create role 'user'"
 // @Success 201 {object} utils.Response{data=models.User}
 // @Failure 400 {object} utils.Response
 // @Failure 401 {object} utils.Response
