@@ -97,9 +97,14 @@ export default function Layout({ children, currentPageName }) {
     },
   ];
 
+  console.log("Layout - Current user:", user);
+  console.log("Layout - User role:", user?.role);
+
   const filteredNav = navigationItems.filter(
     (item) => !user || item.roles.includes(user.role)
   );
+
+  console.log("Layout - Filtered nav items:", filteredNav.length);
 
   return (
     <SidebarProvider>

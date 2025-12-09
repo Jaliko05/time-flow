@@ -77,6 +77,18 @@ func SetupRoutes(router *gin.Engine) {
 				projects.DELETE("/:id", handlers.DeleteProject)
 			}
 
+			// Task routes
+			tasks := protected.Group("/tasks")
+			{
+				tasks.GET("", handlers.GetTasks)
+				tasks.GET("/:id", handlers.GetTask)
+				tasks.POST("", handlers.CreateTask)
+				tasks.PUT("/:id", handlers.UpdateTask)
+				tasks.PATCH("/:id/status", handlers.UpdateTaskStatus)
+				tasks.PATCH("/bulk-order", handlers.BulkUpdateTaskOrder)
+				tasks.DELETE("/:id", handlers.DeleteTask)
+			}
+
 			// Activity routes
 			activities := protected.Group("/activities")
 			{

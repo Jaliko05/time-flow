@@ -41,7 +41,7 @@ func RequireAreaAccess() gin.HandlerFunc {
 			return
 		}
 
-		// Admin can only access their area
+		// Admin and AdminArea can only access their area
 		if role == models.RoleAdmin {
 			userAreaID, exists := c.Get("user_area_id")
 			if !exists || userAreaID == nil {

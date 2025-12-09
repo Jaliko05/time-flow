@@ -3,6 +3,7 @@ import Layout from "./Layout.jsx";
 import Dashboard from "./Dashboard";
 import Activities from "./Activities";
 import Projects from "./Projects";
+import ProjectDetail from "./ProjectDetail";
 import Settings from "./Settings";
 import Admin from "./Admin";
 import Login from "./Login";
@@ -92,6 +93,17 @@ function PagesContent() {
           <ProtectedRoute>
             <Layout currentPageName={currentPage}>
               <Projects />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Projects/:id"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <ProjectDetail />
             </Layout>
           </ProtectedRoute>
         }

@@ -48,10 +48,47 @@ type Project struct {
 	Creator      User       `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
 	AssignedUser *User      `gorm:"foreignKey:AssignedUserID" json:"assigned_user,omitempty" swaggerignore:"true"`
 	Area         *Area      `gorm:"foreignKey:AreaID" json:"area,omitempty" swaggerignore:"true"`
+	Tasks        []Task     `gorm:"foreignKey:ProjectID" json:"tasks,omitempty" swaggerignore:"true"`
 	Activities   []Activity `gorm:"foreignKey:ProjectID" json:"activities,omitempty" swaggerignore:"true"`
+}
+
+// BeforeSave hook to update project metrics
+func (p *Project) BeforeSave(tx *gorm.DB) error {
+	// Calculate remaining hours
+	if p.EstimatedHours > 0 {
+		p.RemainingHours = p.EstimatedHours - p.UsedHours
+		if p.RemainingHours < 0 {
+			p.RemainingHours = 0
+		}
+
+		// Calculate completion percent
+		p.CompletionPercent = (p.UsedHours / p.EstimatedHours) * 100
+		if p.CompletionPercent > 100 {
+			p.CompletionPercent = 100
+		}
+	}
+	return nil
 }
 
 // CanRegisterActivity checks if a project can have activities registered
 func (p *Project) CanRegisterActivity() bool {
 	return p.Status == ProjectStatusInProgress || p.Status == ProjectStatusCompleted
+}
+
+// UpdateUsedHours updates the used hours from tasks and activities
+func (p *Project) UpdateUsedHours(db *gorm.DB) error {
+	var total float64
+
+	// Sum hours from all activities related to this project
+	err := db.Model(&Activity{}).
+		Where("project_id = ?", p.ID).
+		Select("COALESCE(SUM(execution_time), 0)").
+		Scan(&total).Error
+
+	if err != nil {
+		return err
+	}
+
+	p.UsedHours = total
+	return db.Save(p).Error
 }

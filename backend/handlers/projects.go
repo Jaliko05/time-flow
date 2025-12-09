@@ -51,7 +51,7 @@ func GetProjects(c *gin.Context) {
 	// Apply filters based on role
 	role := userRole.(models.Role)
 	if role == models.RoleUser {
-		// Regular users only see projects assigned to them
+		// Regular users see projects assigned to them (includes personal projects auto-assigned)
 		query = query.Where("assigned_user_id = ?", userID)
 	} else if role == models.RoleAdmin {
 		// Admins see projects from their area
@@ -193,6 +193,11 @@ func CreateProject(c *gin.Context) {
 	initialStatus := models.ProjectStatusUnassigned
 	if req.ProjectType == models.ProjectTypePersonal {
 		initialStatus = models.ProjectStatusInProgress // Personal projects start in progress
+		// Personal projects are auto-assigned to their creator
+		if req.AssignedUserID == nil {
+			creatorID := userID.(uint)
+			req.AssignedUserID = &creatorID
+		}
 	} else if req.AssignedUserID != nil {
 		initialStatus = models.ProjectStatusAssigned // Area projects with assignment start as assigned
 	}

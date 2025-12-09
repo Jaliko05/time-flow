@@ -24,7 +24,7 @@ export default function Projects() {
       if (user?.role === "user") {
         params.creator_id = user.id;
       }
-      // Admins see projects from their area
+      // Admins/AdminArea see projects from their area
       else if (user?.role === "admin" && user?.area_id) {
         params.area_id = user.area_id;
       }

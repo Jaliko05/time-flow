@@ -37,8 +37,12 @@ export default function UserDashboard({ user }) {
 
   // Mutación para crear proyecto
   const createProjectMutation = useMutation({
-    mutationFn: (data) => projectsAPI.create(data),
-    onSuccess: () => {
+    mutationFn: (data) => {
+      console.log("Enviando proyecto:", data);
+      return projectsAPI.create(data);
+    },
+    onSuccess: (result) => {
+      console.log("Proyecto creado:", result);
       queryClient.invalidateQueries(["projects"]);
       toast({
         title: "Éxito",
@@ -47,6 +51,8 @@ export default function UserDashboard({ user }) {
       setShowProjectDialog(false);
     },
     onError: (error) => {
+      console.error("Error al crear proyecto:", error);
+      console.error("Response data:", error.response?.data);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Error al crear proyecto",

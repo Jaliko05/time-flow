@@ -132,7 +132,7 @@ func MicrosoftLogin(c *gin.Context) {
 			MicrosoftID:          &msUserInfo.ID,
 			MicrosoftAccessToken: &req.AccessToken,
 			AuthProvider:         "microsoft",
-			IsActive:             true,
+			IsActive:             false, // Pending SuperAdmin approval
 		}
 
 		if err := config.DB.Create(&user).Error; err != nil {
@@ -142,6 +142,19 @@ func MicrosoftLogin(c *gin.Context) {
 
 		// Reload to get Area relation
 		config.DB.Preload("Area").First(&user, user.ID)
+
+		// Return special response for pending approval
+		utils.SuccessResponse(c, 202, "Account created. Waiting for administrator approval", gin.H{
+			"user": UserResponse{
+				ID:       user.ID,
+				Email:    user.Email,
+				FullName: user.FullName,
+				Role:     user.Role,
+				IsActive: user.IsActive,
+			},
+			"pending_approval": true,
+		})
+		return
 	} else {
 		// User exists, check if active
 		if !user.IsActive {

@@ -84,7 +84,7 @@ export default function Admin() {
     queryFn: async () => {
       let query = { month: filters.month };
 
-      // Admin sees only their area's activities
+      // Admin/AdminArea sees only their area's activities
       if (user?.role === "admin" && user?.area_id) {
         query.area_id = user.area_id;
       }
@@ -105,7 +105,7 @@ export default function Admin() {
   const { data: allUsers = [] } = useQuery({
     queryKey: ["allUsers"],
     queryFn: async () => {
-      // Admin sees only users from their area
+      // Admin/AdminArea sees only users from their area
       if (user?.role === "admin" && user?.area_id) {
         return await usersAPI.getAll({ area_id: user.area_id });
       }

@@ -33,17 +33,37 @@ export default function AdminDashboard() {
   const [showProjectDialog, setShowProjectDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
+  console.log("AdminDashboard - user:", user);
+  console.log(
+    "AdminDashboard - enabled check:",
+    !!user && user.role === "admin" && !!user.area_id
+  );
+
   const { data: usersSummary = [], isLoading: loadingUsers } = useQuery({
     queryKey: ["stats", "users", user?.area_id],
     queryFn: () => statsAPI.getUsersSummary({ area_id: user?.area_id }),
     enabled: !!user && user.role === "admin" && !!user.area_id,
   });
 
+  console.log(
+    "AdminDashboard - usersSummary:",
+    usersSummary,
+    "isLoading:",
+    loadingUsers
+  );
+
   const { data: projectsSummary = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["stats", "projects", user?.area_id],
     queryFn: () => statsAPI.getProjectsSummary({ area_id: user?.area_id }),
     enabled: !!user && user.role === "admin" && !!user.area_id,
   });
+
+  console.log(
+    "AdminDashboard - projectsSummary:",
+    projectsSummary,
+    "isLoading:",
+    loadingProjects
+  );
 
   // Obtener proyectos del área para el Kanban
   const { data: areaProjects = [], isLoading: loadingAreaProjects } = useQuery({
@@ -55,7 +75,7 @@ export default function AdminDashboard() {
   // Obtener usuarios del área para asignar proyectos
   const { data: areaUsers = [] } = useQuery({
     queryKey: ["users", user?.area_id],
-    queryFn: () => usersAPI.getAll({ area_id: user?.area_id }),
+    queryFn: () => usersAPI.getAll({ area_id: user.area_id }),
     enabled: !!user && user.role === "admin" && !!user.area_id,
   });
 
@@ -79,17 +99,14 @@ export default function AdminDashboard() {
     },
   });
 
-  const totalUsers = usersSummary.length;
-  const totalProjects = projectsSummary.length;
-  const activeProjects = projectsSummary.filter((p) => p.is_active).length;
-  const totalHours = usersSummary.reduce(
-    (sum, user) => sum + user.total_hours,
-    0
-  );
-  const totalActivities = usersSummary.reduce(
-    (sum, user) => sum + user.total_activities,
-    0
-  );
+  const totalUsers = usersSummary?.length || 0;
+  const totalProjects = projectsSummary?.length || 0;
+  const activeProjects =
+    projectsSummary?.filter((p) => p.is_active).length || 0;
+  const totalHours =
+    usersSummary?.reduce((sum, user) => sum + user.total_hours, 0) || 0;
+  const totalActivities =
+    usersSummary?.reduce((sum, user) => sum + user.total_activities, 0) || 0;
 
   if (loadingUsers || loadingProjects) {
     return (
@@ -199,7 +216,7 @@ export default function AdminDashboard() {
               <CardTitle>Mis Trabajadores</CardTitle>
             </CardHeader>
             <CardContent>
-              {usersSummary.length === 0 ? (
+              {(usersSummary?.length || 0) === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No hay trabajadores en tu área aún
                 </div>
@@ -216,7 +233,7 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usersSummary
+                    {(usersSummary || [])
                       .sort((a, b) => b.total_hours - a.total_hours)
                       .map((worker) => (
                         <TableRow key={worker.user_id}>
@@ -256,7 +273,7 @@ export default function AdminDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {projectsSummary.length === 0 ? (
+              {(projectsSummary?.length || 0) === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No hay proyectos en tu área aún. Crea el primero en el
                   Backlog.
@@ -275,7 +292,7 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projectsSummary.map((project) => (
+                    {(projectsSummary || []).map((project) => (
                       <TableRow key={project.project_id}>
                         <TableCell className="font-medium">
                           {project.project_name}

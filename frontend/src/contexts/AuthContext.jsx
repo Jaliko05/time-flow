@@ -52,7 +52,10 @@ export const AuthProvider = ({ children }) => {
 
   const loginMicrosoft = async () => {
     const response = await authService.loginMicrosoft();
+    console.log("Microsoft login response:", response);
+    console.log("User from response:", response.user);
     if (response.user) {
+      console.log("Setting user:", response.user);
       setUser(response.user);
     }
     return response;

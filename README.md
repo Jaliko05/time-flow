@@ -1,16 +1,45 @@
 # ⏱️ Time Flow
 
-Sistema completo de gestión de tiempo y actividades con control de acceso por roles y áreas.
+Sistema completo de gestión de tiempo, proyectos y actividades con control de acceso por roles y áreas. Combina funcionalidades de planner/kanban con registro de actividades diarias.
 
-## 🌟 Características
+## 🌟 Características Principales
 
-- 🔐 **Autenticación JWT** - Sistema seguro de autenticación con roles
-- 👥 **Gestión de Usuarios** - SuperAdmin, Admin por área y usuarios regulares
-- 🏢 **Control por Áreas** - Cada área tiene su administrador y usuarios
-- 📊 **Registro de Actividades** - Seguimiento detallado de tiempo por actividad
-- 📈 **Estadísticas** - Reportes y análisis de horas trabajadas
+- 🔐 **Autenticación OAuth 2.0** - Integración con Microsoft Azure AD
+- 👥 **Sistema de Roles** - SuperAdmin, Admin de Área y Usuarios
+- 🏢 **Gestión por Áreas** - Control granular de permisos por departamento
+- 📋 **Planner/Kanban** - Gestión de proyectos y tareas con vista Kanban
+- ⏱️ **Registro de Actividades** - Seguimiento detallado de tiempo invertido
+- 🎯 **Asignación de Tareas** - Los admins pueden asignar proyectos y tareas a usuarios
+- 📊 **Seguimiento de Progreso** - Métricas automáticas de horas y completitud
+- 📈 **Estadísticas y Reportes** - Análisis de productividad y tiempo
+- 📅 **Integración con Calendar** - Conversión de reuniones en actividades
 - 📱 **Interfaz Responsiva** - Diseño moderno con Tailwind CSS
-- 📚 **API Documentada** - Swagger UI interactiva para probar endpoints
+- 📚 **API Documentada** - Swagger UI interactiva
+
+## 🎯 Perfiles de Usuario
+
+### SuperAdmin
+
+- Acceso completo al sistema
+- Gestión de áreas y usuarios
+- Vista global de todos los proyectos y actividades
+- Estadísticas de toda la organización
+
+### Admin de Área
+
+- Gestión de usuarios de su área
+- Creación de proyectos de área
+- Asignación de proyectos y tareas a usuarios
+- Seguimiento de actividades del área
+- Estadísticas del área
+
+### Usuario
+
+- Gestión de proyectos personales
+- Vista de proyectos y tareas asignadas
+- Registro de actividades diarias
+- Vinculación de actividades a proyectos/tareas
+- Estadísticas personales
 
 ## 🏗️ Arquitectura
 
@@ -19,24 +48,53 @@ Sistema completo de gestión de tiempo y actividades con control de acceso por r
 - **Framework**: Gin
 - **ORM**: GORM
 - **Base de Datos**: PostgreSQL
-- **Autenticación**: JWT
+- **Autenticación**: JWT + OAuth 2.0 (Microsoft)
 - **Documentación**: Swagger/OpenAPI
 
 ### Frontend (React)
 
 - **Framework**: React 18
 - **Build Tool**: Vite
-- **Routing**: React Router
-- **State Management**: React Query
+- **Routing**: React Router v6
+- **State Management**: React Query (TanStack Query)
 - **UI Components**: Shadcn/ui
 - **Estilos**: Tailwind CSS
 - **HTTP Client**: Axios
+
+## 📦 Modelos de Datos
+
+### Jerarquía
+
+```
+Area (Departamento)
+├── Users (Usuarios del área)
+├── Projects (Proyectos del área)
+    └── Tasks (Tareas del proyecto)
+        └── Activities (Actividades registradas en la tarea)
+```
+
+### Estados de Proyecto
+
+- `unassigned` - Sin asignar
+- `assigned` - Asignado a usuario
+- `in_progress` - En progreso
+- `paused` - Pausado
+- `completed` - Completado
+
+### Estados de Tarea
+
+- `backlog` - En backlog
+- `assigned` - Asignada a usuario
+- `in_progress` - En progreso
+- `paused` - Pausada
+- `completed` - Completada
 
 ## 📋 Requisitos
 
 - Go 1.21 o superior
 - Node.js 18 o superior
 - PostgreSQL 13 o superior
+- Cuenta de Azure AD (para OAuth)
 
 ## 🚀 Instalación Rápida
 

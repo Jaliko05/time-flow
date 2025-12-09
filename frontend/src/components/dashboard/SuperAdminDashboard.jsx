@@ -1,9 +1,24 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
-import { statsAPI } from "@/api";
+import { statsAPI, usersAPI } from "@/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Briefcase, BarChart3, TrendingUp, Clock } from "lucide-react";
+import {
+  Users,
+  Briefcase,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Settings,
+  UserCog,
+  Building2,
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AreaManagement from "@/components/admin/AreaManagement";
+import UserManagement from "@/components/admin/UserManagement";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -16,6 +31,7 @@ import { Progress } from "@/components/ui/progress";
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
 
   const { data: areasSummary = [], isLoading: loadingAreas } = useQuery({
     queryKey: ["stats", "areas"],
@@ -34,6 +50,17 @@ export default function SuperAdminDashboard() {
     queryFn: () => statsAPI.getProjectsSummary(),
     enabled: !!user && user.role === "superadmin",
   });
+
+  // Get pending Microsoft users count
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => usersAPI.getAll(),
+    enabled: !!user && user.role === "superadmin",
+  });
+
+  const pendingUsersCount = allUsers.filter(
+    (u) => u.auth_provider === "microsoft" && !u.is_active
+  ).length;
 
   const totalUsers = areasSummary.reduce(
     (sum, area) => sum + area.total_users,
@@ -69,233 +96,280 @@ export default function SuperAdminDashboard() {
               Panel SuperAdmin
             </h1>
             <p className="text-muted-foreground mt-1">
-              Vista general del sistema
+              Administración completa del sistema
             </p>
           </div>
+          {pendingUsersCount > 0 && (
+            <Badge variant="destructive" className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              {pendingUsersCount} usuario{pendingUsersCount !== 1 ? "s" : ""}{" "}
+              pendiente{pendingUsersCount !== 1 ? "s" : ""}
+            </Badge>
+          )}
         </div>
 
-        {/* Tarjetas de Resumen Global */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Áreas
-              </CardTitle>
-              <Briefcase className="w-4 h-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {areasSummary.length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                áreas activas
-              </p>
-            </CardContent>
-          </Card>
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Resumen
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              Usuarios
+              {pendingUsersCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5">
+                  {pendingUsersCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="areas" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Áreas
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Usuarios
-              </CardTitle>
-              <Users className="w-4 h-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {totalUsers}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                trabajadores activos
-              </p>
-            </CardContent>
-          </Card>
+          <TabsContent value="overview" className="space-y-6">
+            {/* Tarjetas de Resumen Global */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Áreas
+                  </CardTitle>
+                  <Briefcase className="w-4 h-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {areasSummary.length}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    áreas activas
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Proyectos
-              </CardTitle>
-              <BarChart3 className="w-4 h-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {totalProjects}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                proyectos en el sistema
-              </p>
-            </CardContent>
-          </Card>
+              <Card className="border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Usuarios
+                  </CardTitle>
+                  <Users className="w-4 h-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {totalUsers}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    trabajadores activos
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Horas
-              </CardTitle>
-              <Clock className="w-4 h-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {totalHours.toFixed(0)}h
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalActivities} actividades
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Proyectos
+                  </CardTitle>
+                  <BarChart3 className="w-4 h-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {totalProjects}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    proyectos en el sistema
+                  </p>
+                </CardContent>
+              </Card>
 
-        {/* Resumen por Áreas */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Resumen por Áreas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Área</TableHead>
-                  <TableHead>Usuarios</TableHead>
-                  <TableHead>Proyectos</TableHead>
-                  <TableHead>Actividades</TableHead>
-                  <TableHead>Horas Totales</TableHead>
-                  <TableHead>Completitud Promedio</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {areasSummary.map((area) => (
-                  <TableRow key={area.area_id}>
-                    <TableCell className="font-medium">
-                      {area.area_name}
-                    </TableCell>
-                    <TableCell>{area.total_users}</TableCell>
-                    <TableCell>
-                      {area.active_projects} / {area.total_projects}
-                    </TableCell>
-                    <TableCell>{area.total_activities}</TableCell>
-                    <TableCell>{area.total_hours.toFixed(1)}h</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          value={area.average_completion}
-                          className="w-16"
-                        />
-                        <span className="text-sm">
-                          {area.average_completion.toFixed(0)}%
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              <Card className="border-border">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Horas
+                  </CardTitle>
+                  <Clock className="w-4 h-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">
+                    {totalHours.toFixed(0)}h
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {totalActivities} actividades
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-        {/* Top Usuarios */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Usuarios Más Activos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Actividades</TableHead>
-                  <TableHead>Horas Totales</TableHead>
-                  <TableHead>Proyectos Asignados</TableHead>
-                  <TableHead>Completitud Promedio</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usersSummary
-                  .sort((a, b) => b.total_hours - a.total_hours)
-                  .slice(0, 10)
-                  .map((user) => (
-                    <TableRow key={user.user_id}>
-                      <TableCell className="font-medium">
-                        {user.user_name}
-                      </TableCell>
-                      <TableCell>{user.user_email}</TableCell>
-                      <TableCell>{user.total_activities}</TableCell>
-                      <TableCell>{user.total_hours.toFixed(1)}h</TableCell>
-                      <TableCell>{user.assigned_projects}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={user.average_completion}
-                            className="w-16"
-                          />
-                          <span className="text-sm">
-                            {user.average_completion.toFixed(0)}%
-                          </span>
-                        </div>
-                      </TableCell>
+            {/* Resumen por Áreas */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumen por Áreas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Área</TableHead>
+                      <TableHead>Usuarios</TableHead>
+                      <TableHead>Proyectos</TableHead>
+                      <TableHead>Actividades</TableHead>
+                      <TableHead>Horas Totales</TableHead>
+                      <TableHead>Completitud Promedio</TableHead>
                     </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {areasSummary.map((area) => (
+                      <TableRow key={area.area_id}>
+                        <TableCell className="font-medium">
+                          {area.area_name}
+                        </TableCell>
+                        <TableCell>{area.total_users}</TableCell>
+                        <TableCell>
+                          {area.active_projects} / {area.total_projects}
+                        </TableCell>
+                        <TableCell>{area.total_activities}</TableCell>
+                        <TableCell>{area.total_hours.toFixed(1)}h</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress
+                              value={area.average_completion}
+                              className="w-16"
+                            />
+                            <span className="text-sm">
+                              {area.average_completion.toFixed(0)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
 
-        {/* Proyectos */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Estado de Proyectos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Proyecto</TableHead>
-                  <TableHead>Asignado a</TableHead>
-                  <TableHead>Horas Estimadas</TableHead>
-                  <TableHead>Horas Usadas</TableHead>
-                  <TableHead>Horas Restantes</TableHead>
-                  <TableHead>Progreso</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projectsSummary.map((project) => (
-                  <TableRow key={project.project_id}>
-                    <TableCell className="font-medium">
-                      {project.project_name}
-                    </TableCell>
-                    <TableCell>
-                      {project.assigned_user_name || "Sin asignar"}
-                    </TableCell>
-                    <TableCell>{project.estimated_hours.toFixed(1)}h</TableCell>
-                    <TableCell>{project.used_hours.toFixed(1)}h</TableCell>
-                    <TableCell>{project.remaining_hours.toFixed(1)}h</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          value={project.completion_percent}
-                          className="w-20"
-                        />
-                        <span className="text-sm">
-                          {project.completion_percent.toFixed(0)}%
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {project.is_active ? (
-                        <span className="text-green-600 font-medium">
-                          Activo
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">Inactivo</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+            {/* Top Usuarios */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Usuarios Más Activos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Actividades</TableHead>
+                      <TableHead>Horas Totales</TableHead>
+                      <TableHead>Proyectos Asignados</TableHead>
+                      <TableHead>Completitud Promedio</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usersSummary
+                      .sort((a, b) => b.total_hours - a.total_hours)
+                      .slice(0, 10)
+                      .map((user) => (
+                        <TableRow key={user.user_id}>
+                          <TableCell className="font-medium">
+                            {user.user_name}
+                          </TableCell>
+                          <TableCell>{user.user_email}</TableCell>
+                          <TableCell>{user.total_activities}</TableCell>
+                          <TableCell>{user.total_hours.toFixed(1)}h</TableCell>
+                          <TableCell>{user.assigned_projects}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress
+                                value={user.average_completion}
+                                className="w-16"
+                              />
+                              <span className="text-sm">
+                                {user.average_completion.toFixed(0)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Proyectos */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Estado de Proyectos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Proyecto</TableHead>
+                      <TableHead>Asignado a</TableHead>
+                      <TableHead>Horas Estimadas</TableHead>
+                      <TableHead>Horas Usadas</TableHead>
+                      <TableHead>Horas Restantes</TableHead>
+                      <TableHead>Progreso</TableHead>
+                      <TableHead>Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {projectsSummary.map((project) => (
+                      <TableRow key={project.project_id}>
+                        <TableCell className="font-medium">
+                          {project.project_name}
+                        </TableCell>
+                        <TableCell>
+                          {project.assigned_user_name || "Sin asignar"}
+                        </TableCell>
+                        <TableCell>
+                          {project.estimated_hours.toFixed(1)}h
+                        </TableCell>
+                        <TableCell>{project.used_hours.toFixed(1)}h</TableCell>
+                        <TableCell>
+                          {project.remaining_hours.toFixed(1)}h
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress
+                              value={project.completion_percent}
+                              className="w-20"
+                            />
+                            <span className="text-sm">
+                              {project.completion_percent.toFixed(0)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {project.is_active ? (
+                            <span className="text-green-600 font-medium">
+                              Activo
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">Inactivo</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="areas">
+            <AreaManagement />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -11,19 +11,24 @@ import (
 )
 
 type CreateActivityRequest struct {
-	ProjectID     *uint               `json:"project_id"`
-	ProjectName   string              `json:"project_name"`
-	ActivityName  string              `json:"activity_name" binding:"required"`
-	ActivityType  models.ActivityType `json:"activity_type" binding:"required"`
-	ExecutionTime float64             `json:"execution_time" binding:"required,gt=0"`
-	Date          string              `json:"date" binding:"required"` // YYYY-MM-DD format
-	OtherArea     string              `json:"other_area"`
-	Observations  string              `json:"observations"`
+	ProjectID       *uint               `json:"project_id"`
+	TaskID          *uint               `json:"task_id"`
+	ProjectName     string              `json:"project_name"`
+	TaskName        string              `json:"task_name"`
+	ActivityName    string              `json:"activity_name" binding:"required"`
+	ActivityType    models.ActivityType `json:"activity_type" binding:"required"`
+	ExecutionTime   float64             `json:"execution_time" binding:"required,gt=0"`
+	Date            string              `json:"date" binding:"required"` // YYYY-MM-DD format
+	OtherArea       string              `json:"other_area"`
+	Observations    string              `json:"observations"`
+	CalendarEventID *string             `json:"calendar_event_id"` // ID del evento de calendario
 }
 
 type UpdateActivityRequest struct {
 	ProjectID     *uint               `json:"project_id"`
+	TaskID        *uint               `json:"task_id"`
 	ProjectName   string              `json:"project_name"`
+	TaskName      string              `json:"task_name"`
 	ActivityName  string              `json:"activity_name"`
 	ActivityType  models.ActivityType `json:"activity_type"`
 	ExecutionTime *float64            `json:"execution_time" binding:"omitempty,gt=0"`
@@ -64,7 +69,7 @@ func GetActivities(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	query := config.DB.Preload("User").Preload("Area").Preload("Project")
+	query := config.DB.Preload("User").Preload("Area").Preload("Project").Preload("Task")
 
 	// Apply role-based filters
 	role := userRole.(models.Role)
@@ -155,7 +160,7 @@ func GetActivity(c *gin.Context) {
 	userAreaID, _ := c.Get("user_area_id")
 
 	var activity models.Activity
-	query := config.DB.Preload("User").Preload("Area").Preload("Project")
+	query := config.DB.Preload("User").Preload("Area").Preload("Project").Preload("Task")
 
 	if err := query.First(&activity, id).Error; err != nil {
 		utils.ErrorResponse(c, 404, "Activity not found")
@@ -252,30 +257,51 @@ func CreateActivity(c *gin.Context) {
 				return
 			}
 		}
+	}
 
-		// Update project hours
-		project.UsedHours += req.ExecutionTime
-		project.RemainingHours = project.EstimatedHours - project.UsedHours
-		if project.EstimatedHours > 0 {
-			project.CompletionPercent = (project.UsedHours / project.EstimatedHours) * 100
+	// If task_id is provided, validate user is assigned to it and update task hours
+	if req.TaskID != nil {
+		var task models.Task
+		if err := config.DB.Preload("Project").First(&task, req.TaskID).Error; err != nil {
+			utils.ErrorResponse(c, 404, "Task not found")
+			return
 		}
-		config.DB.Save(&project)
+
+		// Validate task status allows activity registration
+		if !task.CanRegisterActivity() {
+			utils.ErrorResponse(c, 403, "Can only register activities for tasks that are in progress or completed")
+			return
+		}
+
+		// Validate user is assigned to this task
+		if task.AssignedUserID == nil || *task.AssignedUserID != userID.(uint) {
+			utils.ErrorResponse(c, 403, "You are not assigned to this task")
+			return
+		}
+
+		// If task has a project, also set project_id
+		if req.ProjectID == nil {
+			req.ProjectID = &task.ProjectID
+		}
 	}
 
 	activity := models.Activity{
-		UserID:        userID.(uint),
-		UserEmail:     userEmail.(string),
-		UserName:      user.FullName,
-		AreaID:        userAreaID.(*uint),
-		ProjectID:     req.ProjectID,
-		ProjectName:   req.ProjectName,
-		ActivityName:  req.ActivityName,
-		ActivityType:  req.ActivityType,
-		ExecutionTime: req.ExecutionTime,
-		Date:          activityDate,
-		Month:         activityDate.Format("2006-01"),
-		OtherArea:     req.OtherArea,
-		Observations:  req.Observations,
+		UserID:          userID.(uint),
+		UserEmail:       userEmail.(string),
+		UserName:        user.FullName,
+		AreaID:          userAreaID.(*uint),
+		ProjectID:       req.ProjectID,
+		TaskID:          req.TaskID,
+		ProjectName:     req.ProjectName,
+		TaskName:        req.TaskName,
+		ActivityName:    req.ActivityName,
+		ActivityType:    req.ActivityType,
+		ExecutionTime:   req.ExecutionTime,
+		Date:            activityDate,
+		Month:           activityDate.Format("2006-01"),
+		OtherArea:       req.OtherArea,
+		Observations:    req.Observations,
+		CalendarEventID: req.CalendarEventID,
 	}
 
 	if err := config.DB.Create(&activity).Error; err != nil {
@@ -283,8 +309,24 @@ func CreateActivity(c *gin.Context) {
 		return
 	}
 
+	// Update project hours if applicable
+	if req.ProjectID != nil {
+		var project models.Project
+		if err := config.DB.First(&project, req.ProjectID).Error; err == nil {
+			project.UpdateUsedHours(config.DB)
+		}
+	}
+
+	// Update task hours if applicable
+	if req.TaskID != nil {
+		var task models.Task
+		if err := config.DB.First(&task, req.TaskID).Error; err == nil {
+			task.UpdateUsedHours(config.DB)
+		}
+	}
+
 	// Reload to get relations
-	config.DB.Preload("User").Preload("Area").Preload("Project").First(&activity, activity.ID)
+	config.DB.Preload("User").Preload("Area").Preload("Project").Preload("Task").First(&activity, activity.ID)
 
 	utils.SuccessResponse(c, 201, "Activity created successfully", activity)
 }

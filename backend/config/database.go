@@ -41,6 +41,7 @@ func ConnectDatabase() {
 		&models.Area{},
 		&models.User{},
 		&models.Project{},
+		&models.Task{},
 		&models.Activity{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
