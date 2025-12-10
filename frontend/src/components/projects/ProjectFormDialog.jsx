@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,16 +28,26 @@ import { Loader2, Save, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { usersAPI } from "@/api/users";
 
 export default function ProjectFormDialog({
   project,
   open,
-  onClose,
-  onSave,
-  isSubmitting,
-  userRole,
-  users = [], // Lista de usuarios para asignar (solo para proyectos de área)
+  onOpenChange,
+  onSubmit,
+  isLoading = false,
 }) {
+  const { user } = useAuth();
+  const userRole = user?.role;
+
+  // Fetch users for area projects (only for admin/superadmin)
+  const { data: users = [] } = useQuery({
+    queryKey: ["users", user?.area_id],
+    queryFn: () => usersAPI.getAll(),
+    enabled: open && (userRole === "admin" || userRole === "superadmin"),
+  });
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -63,7 +74,7 @@ export default function ProjectFormDialog({
       setFormData({
         name: "",
         description: "",
-        project_type: userRole === "user" ? "personal" : "personal",
+        project_type: "personal", // Default to personal, admin can change to "area"
         assigned_user_id: null,
         start_date: null,
         due_date: null,
@@ -79,6 +90,14 @@ export default function ProjectFormDialog({
       newErrors.name = "El nombre es obligatorio";
     }
 
+    if (!formData.start_date) {
+      newErrors.start_date = "La fecha de inicio es obligatoria";
+    }
+
+    if (!formData.due_date) {
+      newErrors.due_date = "La fecha de vencimiento es obligatoria";
+    }
+
     if (
       formData.start_date &&
       formData.due_date &&
@@ -87,11 +106,8 @@ export default function ProjectFormDialog({
       newErrors.due_date = "La fecha fin debe ser posterior a la fecha inicio";
     }
 
-    // Si es proyecto de área y el rol es admin, debe asignar un usuario
-    if (formData.project_type === "area" && !formData.assigned_user_id) {
-      newErrors.assigned_user_id =
-        "Debe asignar un usuario para proyectos de área";
-    }
+    // Note: Assignment is now optional for area projects
+    // Can be assigned later via project management
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -115,19 +131,24 @@ export default function ProjectFormDialog({
         : null,
     };
 
-    onSave(dataToSave);
+    onSubmit(dataToSave);
   };
 
   const canCreateAreaProject =
     userRole === "admin" || userRole === "superadmin";
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {project ? "Editar Proyecto" : "Nuevo Proyecto"}
           </DialogTitle>
+          <DialogDescription>
+            {project
+              ? "Actualiza la información del proyecto"
+              : "Crea un nuevo proyecto personal o de área"}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -190,19 +211,24 @@ export default function ProjectFormDialog({
                 <p className="text-xs text-gray-500">
                   {formData.project_type === "personal"
                     ? "Proyecto personal - solo tú puedes registrar actividades"
-                    : "Proyecto de área - puedes asignarlo a un usuario"}
+                    : "Proyecto de área - puedes asignarlo a usuarios ahora o después"}
                 </p>
               </div>
 
               {formData.project_type === "area" && (
                 <div className="space-y-2">
-                  <Label htmlFor="assigned_user">Asignar a Usuario *</Label>
+                  <Label htmlFor="assigned_user">
+                    Asignar a Usuario (Opcional)
+                  </Label>
                   <Select
-                    value={formData.assigned_user_id?.toString() || ""}
+                    value={
+                      formData.assigned_user_id?.toString() || "unassigned"
+                    }
                     onValueChange={(value) =>
                       setFormData((prev) => ({
                         ...prev,
-                        assigned_user_id: value ? parseInt(value) : null,
+                        assigned_user_id:
+                          value === "unassigned" ? null : parseInt(value),
                       }))
                     }
                   >
@@ -211,9 +237,10 @@ export default function ProjectFormDialog({
                         errors.assigned_user_id ? "border-red-500" : ""
                       }
                     >
-                      <SelectValue placeholder="Seleccionar usuario..." />
+                      <SelectValue placeholder="Sin asignar (se puede asignar después)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="unassigned">Sin asignar</SelectItem>
                       {users.map((user) => (
                         <SelectItem key={user.id} value={user.id.toString()}>
                           {user.full_name} - {user.email}
@@ -221,6 +248,10 @@ export default function ProjectFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-gray-500">
+                    Podrás asignar múltiples usuarios más adelante desde la
+                    gestión del proyecto
+                  </p>
                   {errors.assigned_user_id && (
                     <p className="text-xs text-red-500">
                       {errors.assigned_user_id}
@@ -265,14 +296,15 @@ export default function ProjectFormDialog({
           {/* Fechas */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Fecha de Inicio</Label>
+              <Label>Fecha de Inicio *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      !formData.start_date && "text-muted-foreground"
+                      !formData.start_date && "text-muted-foreground",
+                      errors.start_date && "border-red-500"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -295,10 +327,13 @@ export default function ProjectFormDialog({
                   />
                 </PopoverContent>
               </Popover>
+              {errors.start_date && (
+                <p className="text-xs text-red-500">{errors.start_date}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label>Fecha de Fin</Label>
+              <Label>Fecha de Vencimiento *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -339,11 +374,15 @@ export default function ProjectFormDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Guardando...

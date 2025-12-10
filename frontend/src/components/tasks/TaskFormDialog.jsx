@@ -222,16 +222,20 @@ export default function TaskFormDialog({
               <div className="grid gap-2">
                 <Label htmlFor="assigned_user_id">Asignar a</Label>
                 <Select
-                  value={formData.assigned_user_id?.toString() || ""}
+                  value={formData.assigned_user_id?.toString() || "unassigned"}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, assigned_user_id: value })
+                    setFormData({
+                      ...formData,
+                      assigned_user_id:
+                        value === "unassigned" ? null : parseInt(value),
+                    })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sin asignar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin asignar</SelectItem>
+                    <SelectItem value="unassigned">Sin asignar</SelectItem>
                     {users.map((u) => (
                       <SelectItem key={u.id} value={u.id.toString()}>
                         {u.full_name}

@@ -15,7 +15,7 @@ type User struct {
 	Password     string         `json:"-"` // Optional now (nullable for Microsoft auth)
 	FullName     string         `gorm:"not null" json:"full_name"`
 	Role         Role           `gorm:"type:varchar(20);not null;default:'user'" json:"role"`
-	AreaID       *uint          `json:"area_id"`
+	AreaID       *uint          `gorm:"index" json:"area_id"` // Index added for performance on area filtering
 	WorkSchedule datatypes.JSON `json:"work_schedule" swaggertype:"object"`
 	LunchBreak   datatypes.JSON `json:"lunch_break" swaggertype:"object"`
 	IsActive     bool           `gorm:"default:true" json:"is_active"`

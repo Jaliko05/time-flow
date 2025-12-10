@@ -51,10 +51,12 @@ type Task struct {
 	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-" swaggerignore:"true"`
 
 	// Relations
-	Project      Project    `gorm:"foreignKey:ProjectID" json:"project,omitempty" swaggerignore:"true"`
-	AssignedUser *User      `gorm:"foreignKey:AssignedUserID" json:"assigned_user,omitempty" swaggerignore:"true"`
-	Creator      User       `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
-	Activities   []Activity `gorm:"foreignKey:TaskID" json:"activities,omitempty" swaggerignore:"true"`
+	Project         Project          `gorm:"foreignKey:ProjectID" json:"project,omitempty" swaggerignore:"true"`
+	AssignedUser    *User            `gorm:"foreignKey:AssignedUserID" json:"assigned_user,omitempty" swaggerignore:"true"` // Legacy: single assignment (deprecated)
+	Creator         User             `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
+	Activities      []Activity       `gorm:"foreignKey:TaskID" json:"activities,omitempty" swaggerignore:"true"`
+	AssignedUsers   []User           `gorm:"many2many:task_assignments" json:"assigned_users,omitempty" swaggerignore:"true"` // Multiple users assigned
+	TaskAssignments []TaskAssignment `gorm:"foreignKey:TaskID" json:"task_assignments,omitempty" swaggerignore:"true"`        // Assignment details
 }
 
 // BeforeSave hook to update task metrics

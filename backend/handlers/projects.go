@@ -14,11 +14,11 @@ type CreateProjectRequest struct {
 	Name           string                 `json:"name" binding:"required"`
 	Description    string                 `json:"description"`
 	ProjectType    models.ProjectType     `json:"project_type" binding:"required,oneof=personal area"` // personal o area
-	AssignedUserID *uint                  `json:"assigned_user_id"`                                    // Usuario al que se asigna (solo para proyectos de área)
+	AssignedUserID *uint                  `json:"assigned_user_id"`                                    // Usuario al que se asigna (opcional)
 	Priority       models.ProjectPriority `json:"priority" binding:"omitempty,oneof=low medium high critical"`
-	EstimatedHours float64                `json:"estimated_hours" binding:"required,gt=0"` // Horas estimadas
-	StartDate      *time.Time             `json:"start_date"`
-	DueDate        *time.Time             `json:"due_date"`
+	EstimatedHours float64                `json:"estimated_hours" binding:"omitempty,gte=0"` // Horas estimadas (opcional)
+	StartDate      *string                `json:"start_date"`                                // Fecha de inicio en formato YYYY-MM-DD (opcional)
+	DueDate        *string                `json:"due_date"`                                  // Fecha de vencimiento en formato YYYY-MM-DD (opcional)
 }
 
 type UpdateProjectRequest struct {
@@ -181,22 +181,9 @@ func CreateProject(c *gin.Context) {
 			utils.ErrorResponse(c, 400, "Area ID is required for area projects")
 			return
 		}
-
-		// If assigned user is specified, validate it belongs to the same area (for admin)
-		if req.AssignedUserID != nil && role == models.RoleAdmin {
-			var assignedUser models.User
-			if err := config.DB.First(&assignedUser, req.AssignedUserID).Error; err != nil {
-				utils.ErrorResponse(c, 404, "Assigned user not found")
-				return
-			}
-			if assignedUser.AreaID != nil && *assignedUser.AreaID != *userAreaID.(*uint) {
-				utils.ErrorResponse(c, 403, "Can only assign projects to users in your area")
-				return
-			}
-		}
 	}
 
-	// Set initial status based on project type
+	// Set initial status based on project type and assignment
 	initialStatus := models.ProjectStatusUnassigned
 	if req.ProjectType == models.ProjectTypePersonal {
 		initialStatus = models.ProjectStatusInProgress // Personal projects start in progress
@@ -205,9 +192,9 @@ func CreateProject(c *gin.Context) {
 			creatorID := userID.(uint)
 			req.AssignedUserID = &creatorID
 		}
-	} else if req.AssignedUserID != nil {
-		initialStatus = models.ProjectStatusAssigned // Area projects with assignment start as assigned
 	}
+	// Note: Area projects can be created without assignment now
+	// Assignment can be done later via separate endpoint
 
 	// Set area_id for area projects, nil for personal
 	var projectAreaID *uint
@@ -220,6 +207,25 @@ func CreateProject(c *gin.Context) {
 	priority := req.Priority
 	if priority == "" {
 		priority = models.ProjectPriorityMedium
+	}
+
+	// Parse dates from strings to time.Time
+	var startDate, dueDate *time.Time
+	if req.StartDate != nil && *req.StartDate != "" {
+		parsed, err := time.Parse("2006-01-02", *req.StartDate)
+		if err != nil {
+			utils.ErrorResponse(c, 400, "Invalid start_date format. Use YYYY-MM-DD")
+			return
+		}
+		startDate = &parsed
+	}
+	if req.DueDate != nil && *req.DueDate != "" {
+		parsed, err := time.Parse("2006-01-02", *req.DueDate)
+		if err != nil {
+			utils.ErrorResponse(c, 400, "Invalid due_date format. Use YYYY-MM-DD")
+			return
+		}
+		dueDate = &parsed
 	}
 
 	project := models.Project{
@@ -235,8 +241,8 @@ func CreateProject(c *gin.Context) {
 		UsedHours:         0,
 		RemainingHours:    req.EstimatedHours,
 		CompletionPercent: 0,
-		StartDate:         req.StartDate,
-		DueDate:           req.DueDate,
+		StartDate:         startDate,
+		DueDate:           dueDate,
 		IsActive:          true,
 	}
 

@@ -40,9 +40,9 @@ type Project struct {
 	ID                uint            `gorm:"primarykey" json:"id"`
 	Name              string          `gorm:"not null" json:"name"`
 	Description       string          `json:"description"`
-	CreatedBy         uint            `gorm:"not null" json:"created_by"`
-	AreaID            *uint           `json:"area_id"`
-	AssignedUserID    *uint           `json:"assigned_user_id"`                                                 // Usuario asignado al proyecto
+	CreatedBy         uint            `gorm:"not null;index" json:"created_by"`                                 // Indexed for queries by creator
+	AreaID            *uint           `gorm:"index" json:"area_id"`                                             // Indexed for area filtering
+	AssignedUserID    *uint           `gorm:"index" json:"assigned_user_id"`                                    // Indexed for queries by assigned user
 	ProjectType       ProjectType     `gorm:"type:varchar(20);not null;default:'personal'" json:"project_type"` // personal o area
 	Status            ProjectStatus   `gorm:"type:varchar(20);not null;default:'unassigned'" json:"status"`     // Estado del proyecto
 	Priority          ProjectPriority `gorm:"type:varchar(20);not null;default:'medium'" json:"priority"`       // Prioridad del proyecto
@@ -53,18 +53,20 @@ type Project struct {
 	StartDate         *time.Time      `json:"start_date"`                                                       // Fecha de inicio
 	DueDate           *time.Time      `json:"due_date"`                                                         // Fecha de vencimiento
 	CompletedAt       *time.Time      `json:"completed_at"`                                                     // Fecha de completado
-	IsActive          bool            `gorm:"default:true" json:"is_active"`
+	IsActive          bool            `gorm:"default:true;index" json:"is_active"`                              // Indexed for active/inactive filtering
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
 	DeletedAt         gorm.DeletedAt  `gorm:"index" json:"-" swaggerignore:"true"`
 
 	// Relations
-	Creator      User       `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
-	AssignedUser *User      `gorm:"foreignKey:AssignedUserID" json:"assigned_user,omitempty" swaggerignore:"true"`
-	Area         *Area      `gorm:"foreignKey:AreaID" json:"area,omitempty" swaggerignore:"true"`
-	Tasks        []Task     `gorm:"foreignKey:ProjectID" json:"tasks,omitempty" swaggerignore:"true"`
-	Activities   []Activity `gorm:"foreignKey:ProjectID" json:"activities,omitempty" swaggerignore:"true"`
-	Comments     []Comment  `gorm:"foreignKey:ProjectID" json:"comments,omitempty" swaggerignore:"true"`
+	Creator            User                `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
+	AssignedUser       *User               `gorm:"foreignKey:AssignedUserID" json:"assigned_user,omitempty" swaggerignore:"true"` // Legacy: single assignment (deprecated)
+	Area               *Area               `gorm:"foreignKey:AreaID" json:"area,omitempty" swaggerignore:"true"`
+	Tasks              []Task              `gorm:"foreignKey:ProjectID" json:"tasks,omitempty" swaggerignore:"true"`
+	Activities         []Activity          `gorm:"foreignKey:ProjectID" json:"activities,omitempty" swaggerignore:"true"`
+	Comments           []Comment           `gorm:"foreignKey:ProjectID" json:"comments,omitempty" swaggerignore:"true"`
+	AssignedUsers      []User              `gorm:"many2many:project_assignments" json:"assigned_users,omitempty" swaggerignore:"true"` // Multiple users assigned
+	ProjectAssignments []ProjectAssignment `gorm:"foreignKey:ProjectID" json:"project_assignments,omitempty" swaggerignore:"true"`     // Assignment details
 }
 
 // BeforeSave hook to update project metrics
