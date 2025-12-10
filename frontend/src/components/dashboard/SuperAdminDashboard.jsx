@@ -58,23 +58,23 @@ export default function SuperAdminDashboard() {
     enabled: !!user && user.role === "superadmin",
   });
 
-  const pendingUsersCount = allUsers.filter(
+  const pendingUsersCount = (allUsers || []).filter(
     (u) => u.auth_provider === "microsoft" && !u.is_active
   ).length;
 
-  const totalUsers = areasSummary.reduce(
+  const totalUsers = (areasSummary || []).reduce(
     (sum, area) => sum + area.total_users,
     0
   );
-  const totalProjects = areasSummary.reduce(
+  const totalProjects = (areasSummary || []).reduce(
     (sum, area) => sum + area.total_projects,
     0
   );
-  const totalHours = areasSummary.reduce(
+  const totalHours = (areasSummary || []).reduce(
     (sum, area) => sum + area.total_hours,
     0
   );
-  const totalActivities = areasSummary.reduce(
+  const totalActivities = (areasSummary || []).reduce(
     (sum, area) => sum + area.total_activities,
     0
   );
@@ -145,7 +145,7 @@ export default function SuperAdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-foreground">
-                    {areasSummary.length}
+                    {(areasSummary || []).length}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     áreas activas
@@ -208,47 +208,125 @@ export default function SuperAdminDashboard() {
             {/* Resumen por Áreas */}
             <Card>
               <CardHeader>
-                <CardTitle>Resumen por Áreas</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Estadísticas por Área
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Vista general del rendimiento de cada área
+                </p>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Área</TableHead>
-                      <TableHead>Usuarios</TableHead>
-                      <TableHead>Proyectos</TableHead>
-                      <TableHead>Actividades</TableHead>
-                      <TableHead>Horas Totales</TableHead>
-                      <TableHead>Completitud Promedio</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {areasSummary.map((area) => (
-                      <TableRow key={area.area_id}>
-                        <TableCell className="font-medium">
-                          {area.area_name}
-                        </TableCell>
-                        <TableCell>{area.total_users}</TableCell>
-                        <TableCell>
-                          {area.active_projects} / {area.total_projects}
-                        </TableCell>
-                        <TableCell>{area.total_activities}</TableCell>
-                        <TableCell>{area.total_hours.toFixed(1)}h</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={area.average_completion}
-                              className="w-16"
-                            />
-                            <span className="text-sm">
-                              {area.average_completion.toFixed(0)}%
+                <div className="space-y-6">
+                  {(areasSummary || []).map((area) => {
+                    const completionPercent = area.average_completion || 0;
+                    const efficiency =
+                      area.total_hours > 0
+                        ? (area.total_activities / area.total_hours).toFixed(2)
+                        : 0;
+
+                    return (
+                      <div
+                        key={area.area_id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        {/* Header del área */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <Building2 className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">
+                                {area.area_name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {area.total_users} usuarios •{" "}
+                                {area.total_projects} proyectos
+                              </p>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={
+                              completionPercent >= 75
+                                ? "bg-green-100 text-green-700 border-green-300"
+                                : completionPercent >= 50
+                                ? "bg-yellow-100 text-yellow-700 border-yellow-300"
+                                : "bg-red-100 text-red-700 border-red-300"
+                            }
+                          >
+                            {completionPercent.toFixed(0)}% Completitud
+                          </Badge>
+                        </div>
+
+                        {/* Métricas en grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-muted-foreground mb-1">
+                              Proyectos Activos
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {area.active_projects}
+                            </p>
+                          </div>
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-muted-foreground mb-1">
+                              Actividades
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {area.total_activities}
+                            </p>
+                          </div>
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-muted-foreground mb-1">
+                              Total Horas
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {area.total_hours.toFixed(0)}h
+                            </p>
+                          </div>
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-muted-foreground mb-1">
+                              Eficiencia
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {efficiency}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              act/hora
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Barra de progreso */}
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-muted-foreground">
+                              Progreso general del área
+                            </span>
+                            <span className="font-medium">
+                              {completionPercent.toFixed(1)}%
                             </span>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          <Progress value={completionPercent} className="h-2" />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {(areasSummary || []).length === 0 && (
+                    <div className="text-center py-12">
+                      <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                      <p className="text-muted-foreground">
+                        No hay áreas registradas
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Crea áreas desde la pestaña "Gestión de Áreas"
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -270,7 +348,7 @@ export default function SuperAdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usersSummary
+                    {(usersSummary || [])
                       .sort((a, b) => b.total_hours - a.total_hours)
                       .slice(0, 10)
                       .map((user) => (
@@ -319,7 +397,7 @@ export default function SuperAdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projectsSummary.map((project) => (
+                    {(projectsSummary || []).map((project) => (
                       <TableRow key={project.project_id}>
                         <TableCell className="font-medium">
                           {project.project_name}

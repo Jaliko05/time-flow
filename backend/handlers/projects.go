@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jaliko05/time-flow/config"
@@ -10,19 +11,25 @@ import (
 )
 
 type CreateProjectRequest struct {
-	Name           string             `json:"name" binding:"required"`
-	Description    string             `json:"description"`
-	ProjectType    models.ProjectType `json:"project_type" binding:"required,oneof=personal area"` // personal o area
-	AssignedUserID *uint              `json:"assigned_user_id"`                                    // Usuario al que se asigna (solo para proyectos de área)
-	EstimatedHours float64            `json:"estimated_hours" binding:"required,gt=0"`             // Horas estimadas
+	Name           string                 `json:"name" binding:"required"`
+	Description    string                 `json:"description"`
+	ProjectType    models.ProjectType     `json:"project_type" binding:"required,oneof=personal area"` // personal o area
+	AssignedUserID *uint                  `json:"assigned_user_id"`                                    // Usuario al que se asigna (solo para proyectos de área)
+	Priority       models.ProjectPriority `json:"priority" binding:"omitempty,oneof=low medium high critical"`
+	EstimatedHours float64                `json:"estimated_hours" binding:"required,gt=0"` // Horas estimadas
+	StartDate      *time.Time             `json:"start_date"`
+	DueDate        *time.Time             `json:"due_date"`
 }
 
 type UpdateProjectRequest struct {
-	Name           string   `json:"name"`
-	Description    string   `json:"description"`
-	AssignedUserID *uint    `json:"assigned_user_id"`
-	EstimatedHours *float64 `json:"estimated_hours" binding:"omitempty,gt=0"`
-	IsActive       *bool    `json:"is_active"`
+	Name           string                  `json:"name"`
+	Description    string                  `json:"description"`
+	AssignedUserID *uint                   `json:"assigned_user_id"`
+	Priority       *models.ProjectPriority `json:"priority" binding:"omitempty,oneof=low medium high critical"`
+	EstimatedHours *float64                `json:"estimated_hours" binding:"omitempty,gt=0"`
+	StartDate      *time.Time              `json:"start_date"`
+	DueDate        *time.Time              `json:"due_date"`
+	IsActive       *bool                   `json:"is_active"`
 }
 
 type UpdateProjectStatusRequest struct {
@@ -209,6 +216,12 @@ func CreateProject(c *gin.Context) {
 		projectAreaID = &areaID
 	}
 
+	// Set default priority if not provided
+	priority := req.Priority
+	if priority == "" {
+		priority = models.ProjectPriorityMedium
+	}
+
 	project := models.Project{
 		Name:              req.Name,
 		Description:       req.Description,
@@ -216,11 +229,14 @@ func CreateProject(c *gin.Context) {
 		AreaID:            projectAreaID,
 		ProjectType:       req.ProjectType,
 		Status:            initialStatus,
+		Priority:          priority,
 		AssignedUserID:    req.AssignedUserID,
 		EstimatedHours:    req.EstimatedHours,
 		UsedHours:         0,
 		RemainingHours:    req.EstimatedHours,
 		CompletionPercent: 0,
+		StartDate:         req.StartDate,
+		DueDate:           req.DueDate,
 		IsActive:          true,
 	}
 
@@ -297,6 +313,15 @@ func UpdateProject(c *gin.Context) {
 		if project.EstimatedHours > 0 {
 			project.CompletionPercent = (project.UsedHours / project.EstimatedHours) * 100
 		}
+	}
+	if req.Priority != nil {
+		project.Priority = *req.Priority
+	}
+	if req.StartDate != nil {
+		project.StartDate = req.StartDate
+	}
+	if req.DueDate != nil {
+		project.DueDate = req.DueDate
 	}
 	if req.IsActive != nil {
 		project.IsActive = *req.IsActive

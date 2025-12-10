@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { ListTodo, CalendarCheck, Plus } from "lucide-react";
 import { Button } from "../ui/button";
-import { Plus, ListTodo, CalendarCheck } from "lucide-react";
-import { useToast } from "../ui/use-toast";
+import { useToast } from "../../hooks/use-toast";
 import ProjectKanban from "../projects/ProjectKanban";
 import ProjectFormDialog from "../projects/ProjectFormDialog";
 import QuickActivityForm from "./QuickActivityForm";
@@ -12,54 +12,45 @@ import TodayActivities from "./TodayActivities";
 import { projectsAPI } from "../../api";
 
 export default function UserDashboard({ user }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [showProjectDialog, setShowProjectDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("activities");
+  const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Obtener proyectos del usuario
+  // Obtener proyectos del usuario: personales + asignados
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => projectsAPI.getAll(),
+    queryKey: ["projects", user?.id],
+    queryFn: () => projectsAPI.getAll({ user_id: user.id }),
+    enabled: !!user,
   });
 
-  // Filtrar proyectos: personales del usuario + proyectos de área asignados
-  const userProjects = projects.filter(
-    (p) =>
-      (p.project_type === "personal" && p.created_by === user.id) ||
-      (p.project_type === "area" && p.assigned_user_id === user.id)
-  );
+  // Mutation para crear proyecto personal
+  const createProjectMutation = useMutation({
+    mutationFn: (newProject) => projectsAPI.create(newProject),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast({
+        title: "Proyecto creado",
+        description: "Tu proyecto personal ha sido creado exitosamente",
+      });
+      setShowProjectDialog(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el proyecto",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Todos los proyectos que puede ver el usuario
+  const userProjects = projects;
 
   // Proyectos que pueden usarse para registrar actividades
   const activeProjects = userProjects.filter(
     (p) => p.status === "in_progress" || p.status === "completed"
   );
-
-  // Mutación para crear proyecto
-  const createProjectMutation = useMutation({
-    mutationFn: (data) => {
-      console.log("Enviando proyecto:", data);
-      return projectsAPI.create(data);
-    },
-    onSuccess: (result) => {
-      console.log("Proyecto creado:", result);
-      queryClient.invalidateQueries(["projects"]);
-      toast({
-        title: "Éxito",
-        description: "Proyecto creado correctamente",
-      });
-      setShowProjectDialog(false);
-    },
-    onError: (error) => {
-      console.error("Error al crear proyecto:", error);
-      console.error("Response data:", error.response?.data);
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Error al crear proyecto",
-        variant: "destructive",
-      });
-    },
-  });
 
   return (
     <div className="space-y-6">
@@ -159,11 +150,11 @@ export default function UserDashboard({ user }) {
 
         {/* Tab: Backlog de Proyectos */}
         <TabsContent value="backlog" className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold">Mis Proyectos</h2>
               <p className="text-sm text-gray-600">
-                Arrastra los proyectos entre columnas para cambiar su estado
+                Proyectos personales y asignados por tu administrador
               </p>
             </div>
             <Button onClick={() => setShowProjectDialog(true)}>
@@ -172,23 +163,42 @@ export default function UserDashboard({ user }) {
             </Button>
           </div>
 
-          <ProjectKanban projects={userProjects} isLoading={loadingProjects} />
+          {userProjects.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <ListTodo className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <p className="text-gray-600 mb-2">No tienes proyectos aún</p>
+                  <p className="text-sm text-gray-500">
+                    Crea un proyecto personal o espera a que tu administrador te
+                    asigne uno
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <ProjectKanban
+              projects={userProjects}
+              isLoading={loadingProjects}
+            />
+          )}
         </TabsContent>
       </Tabs>
 
-      {/* Dialog para crear proyecto */}
+      {/* Dialog para crear proyecto personal */}
       <ProjectFormDialog
         open={showProjectDialog}
-        onClose={() => setShowProjectDialog(false)}
-        onSave={(data) => {
-          // Forzar project_type = 'personal' para usuarios comunes
+        onOpenChange={setShowProjectDialog}
+        onSubmit={(data) => {
+          // Forzar que sea proyecto personal del usuario
           createProjectMutation.mutate({
             ...data,
             project_type: "personal",
+            creator_id: user.id,
+            area_id: user.area_id,
           });
         }}
-        isSubmitting={createProjectMutation.isLoading}
-        userRole="user"
+        isLoading={createProjectMutation.isPending}
       />
     </div>
   );

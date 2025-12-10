@@ -17,7 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Loader2, Save, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export default function ProjectFormDialog({
   project,
@@ -33,7 +42,9 @@ export default function ProjectFormDialog({
     description: "",
     project_type: "personal",
     assigned_user_id: null,
-    estimated_hours: 8,
+    start_date: null,
+    due_date: null,
+    priority: "medium",
   });
   const [errors, setErrors] = useState({});
 
@@ -44,17 +55,19 @@ export default function ProjectFormDialog({
         description: project.description || "",
         project_type: project.project_type || "personal",
         assigned_user_id: project.assigned_user_id || null,
-        estimated_hours: project.estimated_hours || 8,
+        start_date: project.start_date ? new Date(project.start_date) : null,
+        due_date: project.due_date ? new Date(project.due_date) : null,
+        priority: project.priority || "medium",
       });
     } else {
-      // Default values for new project
-      // Para usuarios, siempre es personal
       setFormData({
         name: "",
         description: "",
         project_type: userRole === "user" ? "personal" : "personal",
         assigned_user_id: null,
-        estimated_hours: 8,
+        start_date: null,
+        due_date: null,
+        priority: "medium",
       });
     }
   }, [project, open, userRole]);
@@ -66,8 +79,12 @@ export default function ProjectFormDialog({
       newErrors.name = "El nombre es obligatorio";
     }
 
-    if (!formData.estimated_hours || formData.estimated_hours <= 0) {
-      newErrors.estimated_hours = "Las horas estimadas deben ser mayores a 0";
+    if (
+      formData.start_date &&
+      formData.due_date &&
+      formData.due_date < formData.start_date
+    ) {
+      newErrors.due_date = "La fecha fin debe ser posterior a la fecha inicio";
     }
 
     // Si es proyecto de área y el rol es admin, debe asignar un usuario
@@ -85,11 +102,17 @@ export default function ProjectFormDialog({
 
     if (!validateForm()) return;
 
-    // Solo enviar assigned_user_id si es proyecto de área
+    // Formatear fechas y preparar data
     const dataToSave = {
       ...formData,
       assigned_user_id:
         formData.project_type === "area" ? formData.assigned_user_id : null,
+      start_date: formData.start_date
+        ? format(formData.start_date, "yyyy-MM-dd")
+        : null,
+      due_date: formData.due_date
+        ? format(formData.due_date, "yyyy-MM-dd")
+        : null,
     };
 
     onSave(dataToSave);
@@ -218,25 +241,101 @@ export default function ProjectFormDialog({
             </div>
           )}
 
+          {/* Prioridad */}
           <div className="space-y-2">
-            <Label htmlFor="estimated_hours">Horas Estimadas *</Label>
-            <Input
-              id="estimated_hours"
-              type="number"
-              step="0.5"
-              min="0.5"
-              value={formData.estimated_hours}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  estimated_hours: parseFloat(e.target.value) || 0,
-                }))
+            <Label htmlFor="priority">Prioridad</Label>
+            <Select
+              value={formData.priority}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, priority: value }))
               }
-              className={errors.estimated_hours ? "border-red-500" : ""}
-            />
-            {errors.estimated_hours && (
-              <p className="text-xs text-red-500">{errors.estimated_hours}</p>
-            )}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Baja</SelectItem>
+                <SelectItem value="medium">Media</SelectItem>
+                <SelectItem value="high">Alta</SelectItem>
+                <SelectItem value="critical">Crítica</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Fechas */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Fecha de Inicio</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.start_date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.start_date ? (
+                      format(formData.start_date, "PPP", { locale: es })
+                    ) : (
+                      <span>Seleccionar fecha</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.start_date}
+                    onSelect={(date) =>
+                      setFormData((prev) => ({ ...prev, start_date: date }))
+                    }
+                    locale={es}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fecha de Fin</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.due_date && "text-muted-foreground",
+                      errors.due_date && "border-red-500"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.due_date ? (
+                      format(formData.due_date, "PPP", { locale: es })
+                    ) : (
+                      <span>Seleccionar fecha</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.due_date}
+                    onSelect={(date) =>
+                      setFormData((prev) => ({ ...prev, due_date: date }))
+                    }
+                    locale={es}
+                    disabled={(date) =>
+                      formData.start_date && date < formData.start_date
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.due_date && (
+                <p className="text-xs text-red-500">{errors.due_date}</p>
+              )}
+            </div>
           </div>
 
           <DialogFooter>

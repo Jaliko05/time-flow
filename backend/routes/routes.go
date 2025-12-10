@@ -100,6 +100,15 @@ func SetupRoutes(router *gin.Engine) {
 				activities.DELETE("/:id", handlers.DeleteActivity)
 			}
 
+			// Comment routes
+			comments := protected.Group("/comments")
+			{
+				comments.GET("", handlers.GetComments)
+				comments.POST("", handlers.CreateComment)
+				comments.PATCH("/:id", handlers.UpdateComment)
+				comments.DELETE("/:id", handlers.DeleteComment)
+			}
+
 			// Stats routes (Admin and SuperAdmin only)
 			stats := protected.Group("/stats")
 			stats.Use(middleware.RequireRole(models.RoleSuperAdmin, models.RoleAdmin))

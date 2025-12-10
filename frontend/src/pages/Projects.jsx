@@ -20,11 +20,13 @@ export default function Projects() {
     queryFn: async () => {
       const params = {};
 
-      // Users see only their own projects
+      // Users see their personal projects + projects assigned to them
       if (user?.role === "user") {
-        params.creator_id = user.id;
+        // Backend should filter: (creator_id = user.id AND project_type = 'personal')
+        // OR (assigned_user_id = user.id)
+        params.user_id = user.id;
       }
-      // Admins/AdminArea see projects from their area
+      // Admins see all projects from their area
       else if (user?.role === "admin" && user?.area_id) {
         params.area_id = user.area_id;
       }
@@ -88,20 +90,24 @@ export default function Projects() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Mis Proyectos
+              {user?.role === "superadmin"
+                ? "Todos los Proyectos"
+                : "Mis Proyectos"}
             </h1>
             <p className="text-muted-foreground mt-1">
               {user?.role === "superadmin"
-                ? "Todos los proyectos del sistema"
+                ? "Vista general de todos los proyectos del sistema"
                 : user?.role === "admin"
                 ? `Proyectos del área: ${user?.area?.name || "Tu área"}`
-                : "Gestiona tus proyectos personales"}
+                : "Gestiona tus proyectos personales y tareas"}
             </p>
           </div>
-          <Button onClick={handleNewProject} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nuevo Proyecto
-          </Button>
+          {user?.role !== "superadmin" && (
+            <Button onClick={handleNewProject} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Nuevo Proyecto
+            </Button>
+          )}
         </div>
 
         <Card className="border-border">

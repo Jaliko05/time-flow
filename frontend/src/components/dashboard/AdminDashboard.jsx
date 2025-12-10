@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { statsAPI, projectsAPI, usersAPI } from "@/api";
@@ -10,6 +11,7 @@ import {
   TrendingUp,
   Plus,
   ListTodo,
+  FolderKanban,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -22,22 +24,14 @@ import {
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import ProjectKanban from "../projects/ProjectKanban";
-import ProjectFormDialog from "../projects/ProjectFormDialog";
 import { useToast } from "../ui/use-toast";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [showProjectDialog, setShowProjectDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-
-  console.log("AdminDashboard - user:", user);
-  console.log(
-    "AdminDashboard - enabled check:",
-    !!user && user.role === "admin" && !!user.area_id
-  );
 
   const { data: usersSummary = [], isLoading: loadingUsers } = useQuery({
     queryKey: ["stats", "users", user?.area_id],
@@ -45,25 +39,11 @@ export default function AdminDashboard() {
     enabled: !!user && user.role === "admin" && !!user.area_id,
   });
 
-  console.log(
-    "AdminDashboard - usersSummary:",
-    usersSummary,
-    "isLoading:",
-    loadingUsers
-  );
-
   const { data: projectsSummary = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["stats", "projects", user?.area_id],
     queryFn: () => statsAPI.getProjectsSummary({ area_id: user?.area_id }),
     enabled: !!user && user.role === "admin" && !!user.area_id,
   });
-
-  console.log(
-    "AdminDashboard - projectsSummary:",
-    projectsSummary,
-    "isLoading:",
-    loadingProjects
-  );
 
   // Obtener proyectos del área para el Kanban
   const { data: areaProjects = [], isLoading: loadingAreaProjects } = useQuery({
@@ -77,26 +57,6 @@ export default function AdminDashboard() {
     queryKey: ["users", user?.area_id],
     queryFn: () => usersAPI.getAll({ area_id: user.area_id }),
     enabled: !!user && user.role === "admin" && !!user.area_id,
-  });
-
-  const createProjectMutation = useMutation({
-    mutationFn: projectsAPI.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["projects"]);
-      queryClient.invalidateQueries(["stats"]);
-      setShowProjectDialog(false);
-      toast({
-        title: "Éxito",
-        description: "Proyecto creado correctamente",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Error al crear proyecto",
-        variant: "destructive",
-      });
-    },
   });
 
   const totalUsers = usersSummary?.length || 0;
@@ -348,34 +308,69 @@ export default function AdminDashboard() {
         <TabsContent value="backlog" className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-semibold">Backlog del Área</h2>
+              <h2 className="text-xl font-semibold">Proyectos del Área</h2>
               <p className="text-sm text-gray-600">
-                Crea proyectos, asígnalos a usuarios y gestiona su estado
-                mediante drag and drop
+                Vista general de los proyectos del área. Usa la sección
+                Proyectos para gestión completa.
               </p>
             </div>
-            <Button onClick={() => setShowProjectDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Proyecto
+            <Button onClick={() => navigate("/Projects")}>
+              <FolderKanban className="h-4 w-4 mr-2" />
+              Ver Todos los Proyectos
             </Button>
           </div>
 
-          <ProjectKanban
-            projects={areaProjects}
-            isLoading={loadingAreaProjects}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Proyectos Recientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(areaProjects || []).length === 0 ? (
+                <div className="text-center py-12">
+                  <FolderKanban className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <p className="text-gray-600 mb-4">
+                    No hay proyectos en tu área
+                  </p>
+                  <Button onClick={() => navigate("/Projects")}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear Primer Proyecto
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(areaProjects || []).slice(0, 5).map((project) => (
+                    <div
+                      key={project.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate(`/Projects/${project.id}`)}
+                    >
+                      <div className="flex-1">
+                        <h4 className="font-semibold">{project.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          {project.used_hours?.toFixed(1) || 0}h /{" "}
+                          {project.estimated_hours || 0}h
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm">
+                        Ver Planner
+                      </Button>
+                    </div>
+                  ))}
+                  {(areaProjects || []).length > 5 && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate("/Projects")}
+                    >
+                      Ver todos los {areaProjects.length} proyectos
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Dialog para crear proyecto */}
-      <ProjectFormDialog
-        open={showProjectDialog}
-        onClose={() => setShowProjectDialog(false)}
-        onSave={(data) => createProjectMutation.mutate(data)}
-        isSubmitting={createProjectMutation.isLoading}
-        userRole="admin"
-        users={areaUsers}
-      />
     </div>
   );
 }

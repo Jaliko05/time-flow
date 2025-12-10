@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Calendar,
@@ -13,8 +14,12 @@ import {
   FolderKanban,
   TrendingUp,
   Users,
+  MessageSquare,
+  ListTodo,
 } from "lucide-react";
-import TaskKanban from "../components/tasks/TaskKanban";
+import TaskBoard from "../components/tasks/TaskBoard";
+import TaskFormDialog from "../components/tasks/TaskFormDialog";
+import CommentSection from "../components/tasks/CommentSection";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_CONFIG = {
@@ -31,6 +36,9 @@ export default function ProjectDetail() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [initialStatus, setInitialStatus] = useState("backlog");
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ["projects", id],
@@ -51,6 +59,17 @@ export default function ProjectDetail() {
       !!project?.area_id &&
       (user?.role === "admin" || user?.role === "superadmin"),
   });
+
+  const handleCreateTask = (status = "backlog") => {
+    setSelectedTask(null);
+    setInitialStatus(status);
+    setShowTaskDialog(true);
+  };
+
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
+    setShowTaskDialog(true);
+  };
 
   if (projectLoading) {
     return (
@@ -255,23 +274,55 @@ export default function ProjectDetail() {
           </Card>
         </div>
 
-        {/* Tasks Kanban */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FolderKanban className="w-5 h-5" />
-              Tareas del Proyecto
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TaskKanban
-              tasks={tasks}
-              projectId={parseInt(id)}
-              users={areaUsers}
-              canEdit={canEdit}
-            />
-          </CardContent>
-        </Card>
+        {/* Tasks Kanban and Comments */}
+        <Tabs defaultValue="tasks" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="tasks" className="flex items-center gap-2">
+              <ListTodo className="h-4 w-4" />
+              Tareas ({tasks.length})
+            </TabsTrigger>
+            <TabsTrigger value="comments" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Comentarios
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tasks" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FolderKanban className="w-5 h-5" />
+                  Tablero de Tareas (Planner)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TaskBoard
+                  tasks={tasks}
+                  onEditTask={handleEditTask}
+                  onCreateTask={handleCreateTask}
+                  users={areaUsers}
+                  isLoading={tasksLoading}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="comments" className="mt-6">
+            <CommentSection projectId={parseInt(id)} />
+          </TabsContent>
+        </Tabs>
+
+        {/* Task Dialog */}
+        <TaskFormDialog
+          open={showTaskDialog}
+          onOpenChange={(open) => {
+            setShowTaskDialog(open);
+            if (!open) setSelectedTask(null);
+          }}
+          task={selectedTask}
+          projectId={parseInt(id)}
+          users={areaUsers}
+        />
       </div>
     </div>
   );

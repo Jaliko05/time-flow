@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tasksAPI } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,14 +43,38 @@ export default function TaskFormDialog({
   const isEdit = !!task;
 
   const [formData, setFormData] = useState({
-    name: task?.name || "",
-    description: task?.description || "",
-    priority: task?.priority || "medium",
-    estimated_hours: task?.estimated_hours || "",
-    assigned_user_id: task?.assigned_user_id || "",
-    due_date: task?.due_date ? task.due_date.split("T")[0] : "",
-    project_id: task?.project_id || projectId || "",
+    name: "",
+    description: "",
+    priority: "medium",
+    estimated_hours: "",
+    assigned_user_id: "",
+    due_date: "",
+    project_id: projectId || "",
   });
+
+  useEffect(() => {
+    if (task) {
+      setFormData({
+        name: task.name || "",
+        description: task.description || "",
+        priority: task.priority || "medium",
+        estimated_hours: task.estimated_hours || "",
+        assigned_user_id: task.assigned_user_id || "",
+        due_date: task.due_date ? task.due_date.split("T")[0] : "",
+        project_id: task.project_id || projectId || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        description: "",
+        priority: "medium",
+        estimated_hours: "",
+        assigned_user_id: "",
+        due_date: "",
+        project_id: projectId || "",
+      });
+    }
+  }, [task, projectId, open]);
 
   const createMutation = useMutation({
     mutationFn: (data) => tasksAPI.create(data),

@@ -4,6 +4,7 @@ export { usersAPI } from './users';
 export { areasAPI } from './areas';
 export { projectsAPI } from './projects';
 export { tasksAPI } from './tasks';
+export { commentsAPI } from './comments';
 export { activitiesAPI } from './activities';
 export { statsAPI } from './stats';
 export { default as apiClient } from './client';
