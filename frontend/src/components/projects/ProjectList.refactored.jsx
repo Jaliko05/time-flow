@@ -1,4 +1,3 @@
-import React from "react";
 import { FolderKanban } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/EmptyState";

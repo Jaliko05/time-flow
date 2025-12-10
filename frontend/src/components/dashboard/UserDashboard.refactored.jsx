@@ -37,14 +37,6 @@ export default function UserDashboard({ user }) {
     );
   };
 
-  // Todos los proyectos que puede ver el usuario
-  const userProjects = projects;
-
-  // Proyectos que pueden usarse para registrar actividades
-  const activeProjects = userProjects.filter(
-    (p) => p.status === "in_progress" || p.status === "completed"
-  );
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -52,7 +44,6 @@ export default function UserDashboard({ user }) {
         subtitle="Gestiona tus proyectos y registra tus actividades diarias"
       />
 
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="activities" className="flex items-center gap-2">
@@ -68,7 +59,6 @@ export default function UserDashboard({ user }) {
         {/* Tab: Actividades del Día */}
         <TabsContent value="activities" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Formulario de actividad rápida */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -81,7 +71,6 @@ export default function UserDashboard({ user }) {
               </CardContent>
             </Card>
 
-            {/* Actividades de hoy */}
             <Card>
               <CardHeader>
                 <CardTitle>Actividades de Hoy</CardTitle>
@@ -92,7 +81,6 @@ export default function UserDashboard({ user }) {
             </Card>
           </div>
 
-          {/* Info sobre proyectos activos */}
           <Card>
             <CardHeader>
               <CardTitle>Proyectos Disponibles para Registro</CardTitle>

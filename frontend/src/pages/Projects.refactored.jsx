@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,18 +99,16 @@ export default function Projects() {
           </CardContent>
         </Card>
 
-        {showForm && (
-          <ProjectFormDialog
-            project={editingProject}
-            open={showForm}
-            onOpenChange={(open) => {
-              setShowForm(open);
-              if (!open) setEditingProject(null);
-            }}
-            onSubmit={handleSaveProject}
-            isLoading={isCreating || isUpdating}
-          />
-        )}
+        <ProjectFormDialog
+          open={showForm}
+          onOpenChange={(open) => {
+            setShowForm(open);
+            if (!open) setEditingProject(null);
+          }}
+          project={editingProject}
+          onSubmit={handleSaveProject}
+          isLoading={isCreating || isUpdating}
+        />
       </div>
     </div>
   );
