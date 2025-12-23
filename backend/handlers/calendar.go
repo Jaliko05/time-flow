@@ -10,22 +10,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type GetCalendarEventsRequest struct {
-	StartDate string `json:"start_date"` // formato: YYYY-MM-DD (opcional)
-	EndDate   string `json:"end_date"`   // formato: YYYY-MM-DD (opcional)
-}
-
-type CalendarEventResponse struct {
-	ID          string    `json:"id"`
-	Subject     string    `json:"subject"`
-	Description string    `json:"description"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Location    string    `json:"location"`
-	IsOnline    bool      `json:"is_online"`
-	Duration    float64   `json:"duration_hours"`
-}
-
 // GetCalendarEvents godoc
 // @Summary Get Microsoft Calendar events
 // @Description Get calendar events from Microsoft for the authenticated user
@@ -34,7 +18,7 @@ type CalendarEventResponse struct {
 // @Produce json
 // @Security BearerAuth
 // @Param request body GetCalendarEventsRequest true "Calendar request"
-// @Success 200 {object} utils.Response{data=[]CalendarEventResponse}
+// @Success 200 {object} utils.Response{data=[]models.CalendarEventResponse}
 // @Failure 400 {object} utils.Response
 // @Failure 401 {object} utils.Response
 // @Router /calendar/events [post]
@@ -54,7 +38,7 @@ func GetCalendarEvents(c *gin.Context) {
 		return
 	}
 
-	var req GetCalendarEventsRequest
+	var req models.GetCalendarEventsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -92,13 +76,13 @@ func GetCalendarEvents(c *gin.Context) {
 	}
 
 	// Convertir a formato de respuesta
-	response := make([]CalendarEventResponse, 0, len(events))
+	response := make([]models.CalendarEventResponse, 0, len(events))
 	for _, event := range events {
 		startTime, _ := time.Parse("2006-01-02T15:04:05.0000000", event.Start.DateTime)
 		endTime, _ := time.Parse("2006-01-02T15:04:05.0000000", event.End.DateTime)
 		duration := endTime.Sub(startTime).Hours()
 
-		response = append(response, CalendarEventResponse{
+		response = append(response, models.CalendarEventResponse{
 			ID:          event.ID,
 			Subject:     event.Subject,
 			Description: event.BodyPreview,
@@ -119,7 +103,7 @@ func GetCalendarEvents(c *gin.Context) {
 // @Tags calendar
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} utils.Response{data=[]CalendarEventResponse}
+// @Success 200 {object} utils.Response{data=[]models.CalendarEventResponse}
 // @Failure 401 {object} utils.Response
 // @Failure 404 {object} utils.Response
 // @Router /calendar/today [get]
@@ -148,13 +132,13 @@ func GetTodayCalendarEvents(c *gin.Context) {
 		return
 	}
 
-	response := make([]CalendarEventResponse, 0, len(events))
+	response := make([]models.CalendarEventResponse, 0, len(events))
 	for _, event := range events {
 		startTime, _ := time.Parse("2006-01-02T15:04:05.0000000", event.Start.DateTime)
 		endTime, _ := time.Parse("2006-01-02T15:04:05.0000000", event.End.DateTime)
 		duration := endTime.Sub(startTime).Hours()
 
-		response = append(response, CalendarEventResponse{
+		response = append(response, models.CalendarEventResponse{
 			ID:          event.ID,
 			Subject:     event.Subject,
 			Description: event.BodyPreview,

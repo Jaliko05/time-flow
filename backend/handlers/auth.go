@@ -9,28 +9,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
-type LoginResponse struct {
-	Token string       `json:"token"`
-	User  UserResponse `json:"user"`
-}
-
-type UserResponse struct {
-	ID           uint         `json:"id"`
-	Email        string       `json:"email"`
-	FullName     string       `json:"full_name"`
-	Role         models.Role  `json:"role"`
-	AreaID       *uint        `json:"area_id"`
-	Area         *models.Area `json:"area,omitempty"`
-	WorkSchedule interface{}  `json:"work_schedule,omitempty"`
-	LunchBreak   interface{}  `json:"lunch_break,omitempty"`
-	IsActive     bool         `json:"is_active"`
-}
-
 // Login godoc
 // @Summary Login user
 // @Description Authenticate user with email and password
@@ -43,7 +21,7 @@ type UserResponse struct {
 // @Failure 401 {object} utils.Response
 // @Router /auth/login [post]
 func Login(c *gin.Context) {
-	var req LoginRequest
+	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -66,9 +44,9 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	response := LoginResponse{
+	response := models.LoginResponse{
 		Token: token,
-		User: UserResponse{
+		User: models.UserResponse{
 			ID:           user.ID,
 			Email:        user.Email,
 			FullName:     user.FullName,
@@ -84,10 +62,6 @@ func Login(c *gin.Context) {
 	utils.SuccessResponse(c, 200, "Login successful", response)
 }
 
-type MicrosoftLoginRequest struct {
-	AccessToken string `json:"access_token" binding:"required"`
-}
-
 // MicrosoftLogin godoc
 // @Summary Login with Microsoft
 // @Description Authenticate user with Microsoft access token
@@ -100,7 +74,7 @@ type MicrosoftLoginRequest struct {
 // @Failure 401 {object} utils.Response
 // @Router /auth/microsoft [post]
 func MicrosoftLogin(c *gin.Context) {
-	var req MicrosoftLoginRequest
+	var req models.MicrosoftLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -145,7 +119,7 @@ func MicrosoftLogin(c *gin.Context) {
 
 		// Return special response for pending approval
 		utils.SuccessResponse(c, 202, "Account created. Waiting for administrator approval", gin.H{
-			"user": UserResponse{
+			"user": models.UserResponse{
 				ID:       user.ID,
 				Email:    user.Email,
 				FullName: user.FullName,
@@ -193,9 +167,9 @@ func MicrosoftLogin(c *gin.Context) {
 		return
 	}
 
-	response := LoginResponse{
+	response := models.LoginResponse{
 		Token: token,
-		User: UserResponse{
+		User: models.UserResponse{
 			ID:           user.ID,
 			Email:        user.Email,
 			FullName:     user.FullName,
@@ -229,7 +203,7 @@ func Me(c *gin.Context) {
 		return
 	}
 
-	response := UserResponse{
+	response := models.UserResponse{
 		ID:           user.ID,
 		Email:        user.Email,
 		FullName:     user.FullName,
@@ -244,13 +218,6 @@ func Me(c *gin.Context) {
 	utils.SuccessResponse(c, 200, "User retrieved successfully", response)
 }
 
-type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	FullName string `json:"full_name" binding:"required"`
-	AreaID   *uint  `json:"area_id"`
-}
-
 // Register godoc
 // @Summary Register new user
 // @Description Public endpoint to register a new user account with role 'user'
@@ -263,7 +230,7 @@ type RegisterRequest struct {
 // @Failure 500 {object} utils.Response
 // @Router /auth/register [post]
 func Register(c *gin.Context) {
-	var req RegisterRequest
+	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -296,12 +263,6 @@ func Register(c *gin.Context) {
 	utils.SuccessResponse(c, 201, "User registered successfully", user)
 }
 
-type CreateSuperAdminRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	FullName string `json:"full_name" binding:"required"`
-}
-
 // CreateSuperAdmin godoc
 // @Summary Create SuperAdmin
 // @Description Create a new SuperAdmin user (SuperAdmin only)
@@ -316,7 +277,7 @@ type CreateSuperAdminRequest struct {
 // @Failure 403 {object} utils.Response
 // @Router /auth/superadmin [post]
 func CreateSuperAdmin(c *gin.Context) {
-	var req CreateSuperAdminRequest
+	var req models.CreateSuperAdminRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return

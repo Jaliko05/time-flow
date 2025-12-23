@@ -10,32 +10,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type CreateProjectRequest struct {
-	Name           string                 `json:"name" binding:"required"`
-	Description    string                 `json:"description"`
-	ProjectType    models.ProjectType     `json:"project_type" binding:"required,oneof=personal area"` // personal o area
-	AssignedUserID *uint                  `json:"assigned_user_id"`                                    // Usuario al que se asigna (opcional)
-	Priority       models.ProjectPriority `json:"priority" binding:"omitempty,oneof=low medium high critical"`
-	EstimatedHours float64                `json:"estimated_hours" binding:"omitempty,gte=0"` // Horas estimadas (opcional)
-	StartDate      *string                `json:"start_date"`                                // Fecha de inicio en formato YYYY-MM-DD (opcional)
-	DueDate        *string                `json:"due_date"`                                  // Fecha de vencimiento en formato YYYY-MM-DD (opcional)
-}
-
-type UpdateProjectRequest struct {
-	Name           string                  `json:"name"`
-	Description    string                  `json:"description"`
-	AssignedUserID *uint                   `json:"assigned_user_id"`
-	Priority       *models.ProjectPriority `json:"priority" binding:"omitempty,oneof=low medium high critical"`
-	EstimatedHours *float64                `json:"estimated_hours" binding:"omitempty,gt=0"`
-	StartDate      *string                 `json:"start_date"`
-	DueDate        *string                 `json:"due_date"`
-	IsActive       *bool                   `json:"is_active"`
-}
-
-type UpdateProjectStatusRequest struct {
-	Status models.ProjectStatus `json:"status" binding:"required,oneof=unassigned assigned in_progress paused completed"`
-}
-
 // GetProjects godoc
 // @Summary Get projects
 // @Description Get list of projects. Users see projects assigned to them, Admins see their area's projects, SuperAdmins see all.
@@ -53,13 +27,14 @@ func GetProjects(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	query := config.DB.Preload("Creator").Preload("AssignedUser").Preload("Area")
+	query := config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area")
 
 	// Apply filters based on role
 	role := userRole.(models.Role)
 	if role == models.RoleUser {
-		// Regular users see projects assigned to them (includes personal projects auto-assigned)
-		query = query.Where("assigned_user_id = ?", userID)
+		// Regular users see projects assigned to them through project_assignments
+		query = query.Joins("LEFT JOIN project_assignments ON project_assignments.project_id = projects.id").
+			Where("project_assignments.user_id = ? AND project_assignments.is_active = ?", userID, true)
 	} else if role == models.RoleAdmin {
 		// Admins see projects from their area
 		if userAreaID != nil {
@@ -77,7 +52,8 @@ func GetProjects(c *gin.Context) {
 
 	if assignedUserIDStr := c.Query("assigned_user_id"); assignedUserIDStr != "" {
 		if assignedUserID, err := strconv.ParseUint(assignedUserIDStr, 10, 32); err == nil {
-			query = query.Where("assigned_user_id = ?", uint(assignedUserID))
+			query = query.Joins("LEFT JOIN project_assignments pa ON pa.project_id = projects.id").
+				Where("pa.user_id = ? AND pa.is_active = ?", uint(assignedUserID), true)
 		}
 	}
 
@@ -90,7 +66,7 @@ func GetProjects(c *gin.Context) {
 	}
 
 	var projects []models.Project
-	if err := query.Order("created_at DESC").Find(&projects).Error; err != nil {
+	if err := query.Distinct().Order("created_at DESC").Find(&projects).Error; err != nil {
 		utils.ErrorResponse(c, 500, "Failed to retrieve projects")
 		return
 	}
@@ -116,7 +92,7 @@ func GetProject(c *gin.Context) {
 	userAreaID, _ := c.Get("user_area_id")
 
 	var project models.Project
-	query := config.DB.Preload("Creator").Preload("AssignedUser").Preload("Area")
+	query := config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area")
 
 	if err := query.First(&project, id).Error; err != nil {
 		utils.ErrorResponse(c, 404, "Project not found")
@@ -126,8 +102,11 @@ func GetProject(c *gin.Context) {
 	// Check access permissions
 	role := userRole.(models.Role)
 	if role == models.RoleUser {
-		// Users can only see projects assigned to them
-		if project.AssignedUserID == nil || *project.AssignedUserID != userID.(uint) {
+		// Users can only see projects assigned to them through project_assignments
+		var assignment models.ProjectAssignment
+		err := config.DB.Where("project_id = ? AND user_id = ? AND is_active = ?", project.ID, userID.(uint), true).
+			First(&assignment).Error
+		if err != nil {
 			utils.ErrorResponse(c, 403, "Access denied")
 			return
 		}
@@ -165,7 +144,7 @@ func CreateProject(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	var req CreateProjectRequest
+	var req models.CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -193,31 +172,52 @@ func CreateProject(c *gin.Context) {
 	if req.ProjectType == models.ProjectTypePersonal {
 		initialStatus = models.ProjectStatusInProgress // Personal projects start in progress
 		// Personal projects are auto-assigned to their creator
-		if req.AssignedUserID == nil {
+		if req.AssignedUserID == nil && len(req.AssignedUserIDs) == 0 {
 			creatorID := userID.(uint)
-			req.AssignedUserID = &creatorID
+			req.AssignedUserIDs = []uint{creatorID}
 		}
 	}
 
-	// Validate assigned user if provided
+	// Merge single and multiple assignments for backward compatibility
+	userIDsToAssign := req.AssignedUserIDs
 	if req.AssignedUserID != nil {
-		var assignedUser models.User
-		if err := config.DB.First(&assignedUser, *req.AssignedUserID).Error; err != nil {
-			utils.ErrorResponse(c, 404, "Assigned user not found")
-			return
-		}
+		userIDsToAssign = append(userIDsToAssign, *req.AssignedUserID)
+	}
 
-		// If admin creating area project, check that assigned user belongs to the same area
+	// Validate assigned users if provided
+	var validatedUserIDs []uint
+	if len(userIDsToAssign) > 0 {
+		var adminAreaID *uint
 		if role == models.RoleAdmin && req.ProjectType == models.ProjectTypeArea {
 			areaID, ok := userAreaID.(*uint)
 			if !ok || areaID == nil {
 				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
 				return
 			}
-			if assignedUser.AreaID == nil || *assignedUser.AreaID != *areaID {
-				utils.ErrorResponse(c, 403, "Can only assign users from your area")
+			adminAreaID = areaID
+		}
+
+		// Validate each user
+		for _, userIDToAssign := range userIDsToAssign {
+			var assignedUser models.User
+			if err := config.DB.First(&assignedUser, userIDToAssign).Error; err != nil {
+				utils.ErrorResponse(c, 404, "Assigned user not found: "+strconv.FormatUint(uint64(userIDToAssign), 10))
 				return
 			}
+
+			// If admin creating area project, check that assigned user belongs to the same area
+			if adminAreaID != nil {
+				if assignedUser.AreaID == nil || *assignedUser.AreaID != *adminAreaID {
+					utils.ErrorResponse(c, 403, "Can only assign users from your area")
+					return
+				}
+			}
+
+			validatedUserIDs = append(validatedUserIDs, userIDToAssign)
+		}
+
+		if len(validatedUserIDs) > 0 {
+			initialStatus = models.ProjectStatusAssigned
 		}
 	}
 	// Note: Area projects can be created without assignment now
@@ -264,7 +264,6 @@ func CreateProject(c *gin.Context) {
 		ProjectType:       req.ProjectType,
 		Status:            initialStatus,
 		Priority:          priority,
-		AssignedUserID:    req.AssignedUserID,
 		EstimatedHours:    req.EstimatedHours,
 		UsedHours:         0,
 		RemainingHours:    req.EstimatedHours,
@@ -279,8 +278,26 @@ func CreateProject(c *gin.Context) {
 		return
 	}
 
-	// Reload to get relations
-	config.DB.Preload("Creator").Preload("AssignedUser").Preload("Area").First(&project, project.ID)
+	// Create assignments for all validated users
+	currentUserID := userID.(uint)
+	for _, assignedUserID := range validatedUserIDs {
+		assignment := models.ProjectAssignment{
+			ProjectID:  project.ID,
+			UserID:     assignedUserID,
+			AssignedBy: currentUserID,
+			IsActive:   true,
+			CanModify:  true,
+		}
+		if err := config.DB.Create(&assignment).Error; err != nil {
+			// Log error but don't fail the project creation
+			config.DB.Delete(&project) // Rollback
+			utils.ErrorResponse(c, 500, "Failed to create project assignments")
+			return
+		}
+	}
+
+	// Reload to get relations including assigned users
+	config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area").First(&project, project.ID)
 
 	utils.SuccessResponse(c, 201, "Project created successfully", project)
 }
@@ -305,7 +322,7 @@ func UpdateProject(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	var req UpdateProjectRequest
+	var req models.UpdateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -336,25 +353,42 @@ func UpdateProject(c *gin.Context) {
 		}
 	}
 
-	// Validate assigned user if provided
+	// Merge single and multiple assignments for backward compatibility
+	userIDsToAssign := req.AssignedUserIDs
 	if req.AssignedUserID != nil {
-		var assignedUser models.User
-		if err := config.DB.First(&assignedUser, *req.AssignedUserID).Error; err != nil {
-			utils.ErrorResponse(c, 404, "Assigned user not found")
-			return
-		}
+		userIDsToAssign = append(userIDsToAssign, *req.AssignedUserID)
+	}
 
-		// If admin, check that assigned user belongs to the same area
+	// Validate assigned users if provided
+	var validatedUserIDs []uint
+	if len(userIDsToAssign) > 0 {
+		var adminAreaID *uint
 		if role == models.RoleAdmin {
 			areaID, ok := userAreaID.(*uint)
 			if !ok || areaID == nil {
 				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
 				return
 			}
-			if assignedUser.AreaID == nil || *assignedUser.AreaID != *areaID {
-				utils.ErrorResponse(c, 403, "Can only assign users from your area")
+			adminAreaID = areaID
+		}
+
+		// Validate each user
+		for _, userIDToAssign := range userIDsToAssign {
+			var assignedUser models.User
+			if err := config.DB.First(&assignedUser, userIDToAssign).Error; err != nil {
+				utils.ErrorResponse(c, 404, "Assigned user not found: "+strconv.FormatUint(uint64(userIDToAssign), 10))
 				return
 			}
+
+			// If admin, check that assigned user belongs to the same area
+			if adminAreaID != nil {
+				if assignedUser.AreaID == nil || *assignedUser.AreaID != *adminAreaID {
+					utils.ErrorResponse(c, 403, "Can only assign users from your area")
+					return
+				}
+			}
+
+			validatedUserIDs = append(validatedUserIDs, userIDToAssign)
 		}
 	}
 
@@ -364,9 +398,6 @@ func UpdateProject(c *gin.Context) {
 	}
 	if req.Description != "" {
 		project.Description = req.Description
-	}
-	if req.AssignedUserID != nil {
-		project.AssignedUserID = req.AssignedUserID
 	}
 	if req.EstimatedHours != nil {
 		project.EstimatedHours = *req.EstimatedHours
@@ -403,8 +434,48 @@ func UpdateProject(c *gin.Context) {
 		return
 	}
 
-	// Reload to get relations
-	config.DB.Preload("Creator").Preload("AssignedUser").Preload("Area").First(&project, project.ID)
+	// Update assignments if provided
+	if len(validatedUserIDs) > 0 {
+		// Deactivate all current assignments
+		config.DB.Model(&models.ProjectAssignment{}).
+			Where("project_id = ?", project.ID).
+			Update("is_active", false)
+
+		// Create new assignments
+		currentUserID := c.MustGet("user_id").(uint)
+		for _, assignedUserID := range validatedUserIDs {
+			// Check if assignment already exists
+			var existingAssignment models.ProjectAssignment
+			err := config.DB.Where("project_id = ? AND user_id = ?", project.ID, assignedUserID).
+				First(&existingAssignment).Error
+
+			if err == nil {
+				// Reactivate existing assignment
+				existingAssignment.IsActive = true
+				existingAssignment.AssignedBy = currentUserID
+				config.DB.Save(&existingAssignment)
+			} else {
+				// Create new assignment
+				assignment := models.ProjectAssignment{
+					ProjectID:  project.ID,
+					UserID:     assignedUserID,
+					AssignedBy: currentUserID,
+					IsActive:   true,
+					CanModify:  true,
+				}
+				config.DB.Create(&assignment)
+			}
+		}
+
+		// Update project status
+		if len(validatedUserIDs) > 0 {
+			project.Status = models.ProjectStatusAssigned
+			config.DB.Save(&project)
+		}
+	}
+
+	// Reload to get relations including assigned users
+	config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area").First(&project, project.ID)
 
 	utils.SuccessResponse(c, 200, "Project updated successfully", project)
 }
@@ -480,7 +551,7 @@ func UpdateProjectStatus(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	var req UpdateProjectStatusRequest
+	var req models.UpdateProjectStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -509,8 +580,12 @@ func UpdateProjectStatus(c *gin.Context) {
 		// User can update their own personal projects or projects assigned to them
 		if project.CreatedBy == userID.(uint) && project.ProjectType == models.ProjectTypePersonal {
 			canUpdate = true
-		} else if project.AssignedUserID != nil && *project.AssignedUserID == userID.(uint) {
-			canUpdate = true
+		} else {
+			var assignment models.ProjectAssignment
+			err := config.DB.Where("project_id = ? AND user_id = ? AND is_active = ?", project.ID, userID.(uint), true).First(&assignment).Error
+			if err == nil {
+				canUpdate = true
+			}
 		}
 	}
 

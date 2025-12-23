@@ -30,21 +30,20 @@ const (
 // Task represents a task within a project
 type Task struct {
 	ID                uint           `gorm:"primarykey" json:"id"`
-	ProjectID         uint           `gorm:"not null;index" json:"project_id"`
+	ProjectID         uint           `gorm:"not null;index:idx_project_status" json:"project_id"` // Composite index with status
 	Name              string         `gorm:"not null" json:"name"`
 	Description       string         `gorm:"type:text" json:"description"`
-	Status            TaskStatus     `gorm:"type:varchar(20);not null;default:'backlog'" json:"status"`
+	Status            TaskStatus     `gorm:"type:varchar(20);not null;default:'backlog';index:idx_project_status" json:"status"` // Composite index
 	Priority          TaskPriority   `gorm:"type:varchar(20);not null;default:'medium'" json:"priority"`
-	AssignedUserID    *uint          `gorm:"index" json:"assigned_user_id"`
 	CreatedBy         uint           `gorm:"not null" json:"created_by"`
-	EstimatedHours    float64        `json:"estimated_hours"`        // Horas estimadas para la tarea
-	UsedHours         float64        `json:"used_hours"`             // Horas ya utilizadas
-	RemainingHours    float64        `json:"remaining_hours"`        // Horas restantes
-	CompletionPercent float64        `json:"completion_percent"`     // Porcentaje de completitud
-	StartDate         *time.Time     `json:"start_date"`             // Fecha de inicio real
-	EndDate           *time.Time     `json:"end_date"`               // Fecha de finalización real
-	DueDate           *time.Time     `json:"due_date"`               // Fecha límite
-	Order             int            `gorm:"default:0" json:"order"` // Orden dentro del proyecto
+	EstimatedHours    float64        `gorm:"default:0" json:"estimated_hours"`
+	UsedHours         float64        `gorm:"default:0" json:"used_hours"`
+	RemainingHours    float64        `gorm:"default:0" json:"remaining_hours"`
+	CompletionPercent float64        `gorm:"default:0" json:"completion_percent"`
+	StartDate         *time.Time     `json:"start_date"`
+	EndDate           *time.Time     `json:"end_date"`
+	DueDate           *time.Time     `json:"due_date"`
+	Order             int            `gorm:"default:0" json:"order"`
 	IsActive          bool           `gorm:"default:true" json:"is_active"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
@@ -52,11 +51,11 @@ type Task struct {
 
 	// Relations
 	Project         Project          `gorm:"foreignKey:ProjectID" json:"project,omitempty" swaggerignore:"true"`
-	AssignedUser    *User            `gorm:"foreignKey:AssignedUserID" json:"assigned_user,omitempty" swaggerignore:"true"` // Legacy: single assignment (deprecated)
 	Creator         User             `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
 	Activities      []Activity       `gorm:"foreignKey:TaskID" json:"activities,omitempty" swaggerignore:"true"`
-	AssignedUsers   []User           `gorm:"many2many:task_assignments" json:"assigned_users,omitempty" swaggerignore:"true"` // Multiple users assigned
-	TaskAssignments []TaskAssignment `gorm:"foreignKey:TaskID" json:"task_assignments,omitempty" swaggerignore:"true"`        // Assignment details
+	Comments        []Comment        `gorm:"foreignKey:TaskID" json:"comments,omitempty" swaggerignore:"true"`
+	AssignedUsers   []User           `gorm:"many2many:task_assignments;joinForeignKey:TaskID;joinReferences:UserID" json:"assigned_users,omitempty" swaggerignore:"true"`
+	TaskAssignments []TaskAssignment `gorm:"foreignKey:TaskID" json:"task_assignments,omitempty" swaggerignore:"true"`
 }
 
 // BeforeSave hook to update task metrics

@@ -55,6 +55,7 @@ func CalculateProjectMetrics(estimatedHours, usedHours float64) (float64, float6
 }
 
 // IsAuthorizedForProject checks if user can access/modify project
+// NOTE: This function is deprecated. For user assignment checks, query the project_assignments table directly.
 func IsAuthorizedForProject(userID uint, userRole models.Role, userAreaID *uint, project *models.Project) bool {
 	// SuperAdmin can access everything
 	if userRole == models.RoleSuperAdmin {
@@ -66,9 +67,10 @@ func IsAuthorizedForProject(userID uint, userRole models.Role, userAreaID *uint,
 		return *userAreaID == *project.AreaID
 	}
 
-	// User can access their own projects
+	// User can access their own projects (basic check - does not include assignments)
+	// For full authorization including assignments, query project_assignments table
 	if userRole == models.RoleUser {
-		return project.CreatedBy == userID || (project.AssignedUserID != nil && *project.AssignedUserID == userID)
+		return project.CreatedBy == userID
 	}
 
 	return false

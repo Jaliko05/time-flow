@@ -10,39 +10,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type CreateTaskRequest struct {
-	ProjectID      uint                `json:"project_id" binding:"required"`
-	Name           string              `json:"name" binding:"required"`
-	Description    string              `json:"description"`
-	Priority       models.TaskPriority `json:"priority" binding:"required,oneof=low medium high urgent"`
-	AssignedUserID *uint               `json:"assigned_user_id"`
-	EstimatedHours float64             `json:"estimated_hours" binding:"required,gt=0"`
-	DueDate        *string             `json:"due_date"` // YYYY-MM-DD format
-	Order          int                 `json:"order"`
-}
-
-type UpdateTaskRequest struct {
-	Name           string              `json:"name"`
-	Description    string              `json:"description"`
-	Priority       models.TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high urgent"`
-	AssignedUserID *uint               `json:"assigned_user_id"`
-	EstimatedHours *float64            `json:"estimated_hours" binding:"omitempty,gt=0"`
-	DueDate        *string             `json:"due_date"` // YYYY-MM-DD format
-	Order          *int                `json:"order"`
-	IsActive       *bool               `json:"is_active"`
-}
-
-type UpdateTaskStatusRequest struct {
-	Status models.TaskStatus `json:"status" binding:"required,oneof=backlog assigned in_progress paused completed"`
-}
-
-type BulkUpdateTaskOrderRequest struct {
-	Tasks []struct {
-		ID    uint `json:"id"`
-		Order int  `json:"order"`
-	} `json:"tasks" binding:"required,dive"`
-}
-
 // GetTasks godoc
 // @Summary Get tasks
 // @Description Get list of tasks. Users see their assigned tasks, Admins see their area's tasks, SuperAdmins see all.
@@ -137,7 +104,9 @@ func GetTask(c *gin.Context) {
 	role := userRole.(models.Role)
 	if role == models.RoleUser {
 		// Users can only see tasks assigned to them
-		if task.AssignedUserID == nil || *task.AssignedUserID != userID.(uint) {
+		var assignment models.TaskAssignment
+		err := config.DB.Where("task_id = ? AND user_id = ? AND is_active = ?", task.ID, userID.(uint), true).First(&assignment).Error
+		if err != nil {
 			utils.ErrorResponse(c, 403, "Access denied")
 			return
 		}
@@ -177,7 +146,7 @@ func GetTask(c *gin.Context) {
 // @Failure 403 {object} utils.Response
 // @Router /tasks [post]
 func CreateTask(c *gin.Context) {
-	var req CreateTaskRequest
+	var req models.CreateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -230,7 +199,6 @@ func CreateTask(c *gin.Context) {
 		Name:           req.Name,
 		Description:    req.Description,
 		Priority:       req.Priority,
-		AssignedUserID: req.AssignedUserID,
 		CreatedBy:      userID.(uint),
 		EstimatedHours: req.EstimatedHours,
 		Order:          req.Order,
@@ -302,7 +270,7 @@ func UpdateTask(c *gin.Context) {
 		}
 	}
 
-	var req UpdateTaskRequest
+	var req models.UpdateTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -339,8 +307,8 @@ func UpdateTask(c *gin.Context) {
 	// Handle assignment changes
 	if req.AssignedUserID != nil {
 		if *req.AssignedUserID == 0 {
-			// Unassign task
-			task.AssignedUserID = nil
+			// Deactivate all task assignments
+			config.DB.Model(&models.TaskAssignment{}).Where("task_id = ?", task.ID).Update("is_active", false)
 			if task.Status == models.TaskStatusAssigned {
 				task.Status = models.TaskStatusBacklog
 			}
@@ -360,7 +328,15 @@ func UpdateTask(c *gin.Context) {
 				}
 			}
 
-			task.AssignedUserID = req.AssignedUserID
+			// Deactivate old assignments and create new one
+			config.DB.Model(&models.TaskAssignment{}).Where("task_id = ?", task.ID).Update("is_active", false)
+			assignment := models.TaskAssignment{
+				TaskID:   task.ID,
+				UserID:   *req.AssignedUserID,
+				IsActive: true,
+			}
+			config.DB.Create(&assignment)
+
 			if task.Status == models.TaskStatusBacklog {
 				task.Status = models.TaskStatusAssigned
 			}
@@ -417,7 +393,9 @@ func UpdateTaskStatus(c *gin.Context) {
 		}
 	} else if role == models.RoleUser {
 		// Users can update status of their own tasks
-		if task.AssignedUserID != nil && *task.AssignedUserID == userID.(uint) {
+		var assignment models.TaskAssignment
+		err := config.DB.Where("task_id = ? AND user_id = ? AND is_active = ?", task.ID, userID.(uint), true).First(&assignment).Error
+		if err == nil {
 			canUpdate = true
 		}
 	}
@@ -427,7 +405,7 @@ func UpdateTaskStatus(c *gin.Context) {
 		return
 	}
 
-	var req UpdateTaskStatusRequest
+	var req models.UpdateTaskStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -459,7 +437,7 @@ func UpdateTaskStatus(c *gin.Context) {
 // @Failure 401 {object} utils.Response
 // @Router /tasks/bulk-order [patch]
 func BulkUpdateTaskOrder(c *gin.Context) {
-	var req BulkUpdateTaskOrderRequest
+	var req models.BulkUpdateTaskOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return

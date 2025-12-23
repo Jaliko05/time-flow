@@ -10,42 +10,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type CreateActivityRequest struct {
-	ProjectID       *uint               `json:"project_id"`
-	TaskID          *uint               `json:"task_id"`
-	ProjectName     string              `json:"project_name"`
-	TaskName        string              `json:"task_name"`
-	ActivityName    string              `json:"activity_name" binding:"required"`
-	ActivityType    models.ActivityType `json:"activity_type" binding:"required"`
-	ExecutionTime   float64             `json:"execution_time" binding:"required,gt=0"`
-	Date            string              `json:"date" binding:"required"` // YYYY-MM-DD format
-	OtherArea       string              `json:"other_area"`
-	Observations    string              `json:"observations"`
-	CalendarEventID *string             `json:"calendar_event_id"` // ID del evento de calendario
-}
-
-type UpdateActivityRequest struct {
-	ProjectID     *uint               `json:"project_id"`
-	TaskID        *uint               `json:"task_id"`
-	ProjectName   string              `json:"project_name"`
-	TaskName      string              `json:"task_name"`
-	ActivityName  string              `json:"activity_name"`
-	ActivityType  models.ActivityType `json:"activity_type"`
-	ExecutionTime *float64            `json:"execution_time" binding:"omitempty,gt=0"`
-	Date          string              `json:"date"` // YYYY-MM-DD format
-	OtherArea     string              `json:"other_area"`
-	Observations  string              `json:"observations"`
-}
-
-type ActivityStats struct {
-	TotalHours      float64            `json:"total_hours"`
-	TotalActivities int64              `json:"total_activities"`
-	UniqueUsers     int64              `json:"unique_users"`
-	DailyAverage    float64            `json:"daily_average"`
-	ByType          map[string]float64 `json:"by_type"`
-	ByArea          map[string]float64 `json:"by_area"`
-}
-
 // GetActivities godoc
 // @Summary Get activities
 // @Description Get list of activities with filters. Users see their own, Admins see their area's, SuperAdmins see all.
@@ -214,7 +178,7 @@ func CreateActivity(c *gin.Context) {
 		return
 	}
 
-	var req CreateActivityRequest
+	var req models.CreateActivityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -257,7 +221,9 @@ func CreateActivity(c *gin.Context) {
 			}
 		} else {
 			// For area projects, user must be assigned to it
-			if project.AssignedUserID == nil || *project.AssignedUserID != userID.(uint) {
+			var assignment models.ProjectAssignment
+			err := config.DB.Where("project_id = ? AND user_id = ? AND is_active = ?", project.ID, userID.(uint), true).First(&assignment).Error
+			if err != nil {
 				utils.ErrorResponse(c, 403, "You are not assigned to this project")
 				return
 			}
@@ -279,7 +245,9 @@ func CreateActivity(c *gin.Context) {
 		}
 
 		// Validate user is assigned to this task
-		if task.AssignedUserID == nil || *task.AssignedUserID != userID.(uint) {
+		var assignment models.TaskAssignment
+		err := config.DB.Where("task_id = ? AND user_id = ? AND is_active = ?", task.ID, userID.(uint), true).First(&assignment).Error
+		if err != nil {
 			utils.ErrorResponse(c, 403, "You are not assigned to this task")
 			return
 		}
@@ -355,7 +323,7 @@ func UpdateActivity(c *gin.Context) {
 	id := c.Param("id")
 	currentUserID, _ := c.Get("user_id")
 
-	var req UpdateActivityRequest
+	var req models.UpdateActivityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -475,7 +443,7 @@ func DeleteActivity(c *gin.Context) {
 	utils.SuccessResponse(c, 200, "Activity deleted successfully", nil)
 }
 
-// GetActivityStats godoc
+// Getmodels.ActivityStats godoc
 // @Summary Get activity statistics
 // @Description Get aggregated statistics for activities with optional filters
 // @Tags activities
@@ -486,7 +454,7 @@ func DeleteActivity(c *gin.Context) {
 // @Param month query string false "Filter by month (YYYY-MM)"
 // @Param date_from query string false "Filter from date (YYYY-MM-DD)"
 // @Param date_to query string false "Filter to date (YYYY-MM-DD)"
-// @Success 200 {object} utils.Response{data=ActivityStats}
+// @Success 200 {object} utils.Response{data=models.ActivityStats}
 // @Failure 401 {object} utils.Response
 // @Router /activities/stats [get]
 func GetActivityStats(c *gin.Context) {
@@ -592,7 +560,7 @@ func GetActivityStats(c *gin.Context) {
 		byArea[r.AreaName] = r.TotalHours
 	}
 
-	stats := ActivityStats{
+	stats := models.ActivityStats{
 		TotalHours:      totalHours,
 		TotalActivities: totalActivities,
 		UniqueUsers:     uniqueUsers,

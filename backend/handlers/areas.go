@@ -7,17 +7,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type CreateAreaRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-}
-
-type UpdateAreaRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	IsActive    *bool  `json:"is_active"`
-}
-
 // GetAreas godoc
 // @Summary Get all areas
 // @Description Get list of all areas (public endpoint, also accessible with authentication)
@@ -85,7 +74,7 @@ func GetArea(c *gin.Context) {
 // @Failure 403 {object} utils.Response
 // @Router /areas [post]
 func CreateArea(c *gin.Context) {
-	var req CreateAreaRequest
+	var req models.CreateAreaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -129,7 +118,7 @@ func CreateArea(c *gin.Context) {
 func UpdateArea(c *gin.Context) {
 	id := c.Param("id")
 
-	var req UpdateAreaRequest
+	var req models.UpdateAreaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return

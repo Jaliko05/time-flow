@@ -23,24 +23,23 @@ const (
 
 // Activity represents a time tracking activity
 type Activity struct {
-	ID            uint         `gorm:"primarykey" json:"id"`
-	UserID        uint         `gorm:"not null;index" json:"user_id"`
-	UserName      string       `json:"user_name"`
-	UserEmail     string       `gorm:"index" json:"user_email"`
-	AreaID        *uint        `gorm:"index" json:"area_id"`
-	ProjectID     *uint        `gorm:"index" json:"project_id"`
-	TaskID        *uint        `gorm:"index" json:"task_id"` // Nueva relación con Task
-	ProjectName   string       `json:"project_name"`
-	TaskName      string       `json:"task_name"` // Nombre de la tarea si aplica
-	ActivityName  string       `json:"activity_name"`
-	ActivityType  ActivityType `gorm:"type:varchar(50);index" json:"activity_type"`
-	ExecutionTime float64      `gorm:"not null" json:"execution_time"` // hours
-	Date          time.Time    `gorm:"type:date;not null;index" json:"date"`
-	Month         string       `gorm:"type:varchar(7);index" json:"month"` // YYYY-MM format
-	OtherArea     string       `json:"other_area"`
-	Observations  string       `gorm:"type:text" json:"observations"`
-	// Microsoft Calendar integration
-	CalendarEventID *string        `gorm:"index" json:"calendar_event_id"` // ID del evento de calendario de Microsoft
+	ID              uint           `gorm:"primarykey" json:"id"`
+	UserID          uint           `gorm:"not null;index:idx_user_date" json:"user_id"` // Composite index with date
+	UserName        string         `json:"user_name"`                                   // Denormalized for performance
+	UserEmail       string         `json:"user_email"`                                  // Denormalized for performance
+	AreaID          *uint          `gorm:"index:idx_area_date" json:"area_id"`          // Composite index with date
+	ProjectID       *uint          `gorm:"index:idx_project_date" json:"project_id"`    // Composite index with date
+	TaskID          *uint          `gorm:"index" json:"task_id"`
+	ProjectName     string         `json:"project_name"` // Denormalized for performance
+	TaskName        string         `json:"task_name"`    // Denormalized for performance
+	ActivityName    string         `json:"activity_name"`
+	ActivityType    ActivityType   `gorm:"type:varchar(50);index" json:"activity_type"`
+	ExecutionTime   float64        `gorm:"not null;default:0" json:"execution_time"`
+	Date            time.Time      `gorm:"type:date;not null;index:idx_user_date;index:idx_area_date;index:idx_project_date" json:"date"` // Part of multiple composite indexes
+	Month           string         `gorm:"type:varchar(7);index" json:"month"`
+	OtherArea       string         `json:"other_area"`
+	Observations    string         `gorm:"type:text" json:"observations"`
+	CalendarEventID *string        `gorm:"uniqueIndex" json:"calendar_event_id"` // Changed to unique for calendar sync
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-" swaggerignore:"true"`

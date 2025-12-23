@@ -9,16 +9,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type CreateCommentRequest struct {
-	ProjectID *uint  `json:"project_id"`
-	TaskID    *uint  `json:"task_id"`
-	Content   string `json:"content" binding:"required"`
-}
-
-type UpdateCommentRequest struct {
-	Content string `json:"content" binding:"required"`
-}
-
 // GetComments godoc
 // @Summary Get comments
 // @Description Get comments for a project or task
@@ -63,7 +53,9 @@ func GetComments(c *gin.Context) {
 		// Check access permissions
 		role := userRole.(models.Role)
 		if role == models.RoleUser {
-			if project.AssignedUserID == nil || *project.AssignedUserID != userID.(uint) {
+			var assignment models.ProjectAssignment
+			err := config.DB.Where("project_id = ? AND user_id = ? AND is_active = ?", project.ID, userID.(uint), true).First(&assignment).Error
+			if err != nil {
 				utils.ErrorResponse(c, 403, "Access denied")
 				return
 			}
@@ -99,7 +91,9 @@ func GetComments(c *gin.Context) {
 		// Check access permissions based on project
 		role := userRole.(models.Role)
 		if role == models.RoleUser {
-			if task.Project.AssignedUserID == nil || *task.Project.AssignedUserID != userID.(uint) {
+			var assignment models.ProjectAssignment
+			err := config.DB.Where("project_id = ? AND user_id = ? AND is_active = ?", task.Project.ID, userID.(uint), true).First(&assignment).Error
+			if err != nil {
 				utils.ErrorResponse(c, 403, "Access denied")
 				return
 			}
@@ -145,7 +139,7 @@ func CreateComment(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	var req CreateCommentRequest
+	var req models.CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -174,7 +168,9 @@ func CreateComment(c *gin.Context) {
 
 		// Check permissions
 		if role == models.RoleUser {
-			if project.AssignedUserID == nil || *project.AssignedUserID != userID.(uint) {
+			var assignment models.ProjectAssignment
+			err := config.DB.Where("project_id = ? AND user_id = ? AND is_active = ?", project.ID, userID.(uint), true).First(&assignment).Error
+			if err != nil {
 				utils.ErrorResponse(c, 403, "You can only comment on projects assigned to you")
 				return
 			}
@@ -200,7 +196,9 @@ func CreateComment(c *gin.Context) {
 
 		// Check permissions based on project
 		if role == models.RoleUser {
-			if task.Project.AssignedUserID == nil || *task.Project.AssignedUserID != userID.(uint) {
+			var assignment models.ProjectAssignment
+			err := config.DB.Where("project_id = ? AND user_id = ? AND is_active = ?", task.Project.ID, userID.(uint), true).First(&assignment).Error
+			if err != nil {
 				utils.ErrorResponse(c, 403, "You can only comment on tasks in projects assigned to you")
 				return
 			}
@@ -254,7 +252,7 @@ func UpdateComment(c *gin.Context) {
 	id := c.Param("id")
 	userID, _ := c.Get("user_id")
 
-	var req UpdateCommentRequest
+	var req models.UpdateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return

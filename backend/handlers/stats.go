@@ -9,41 +9,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type AreaSummary struct {
-	AreaID            uint             `json:"area_id"`
-	AreaName          string           `json:"area_name"`
-	TotalUsers        int64            `json:"total_users"`
-	TotalProjects     int64            `json:"total_projects"`
-	ActiveProjects    int64            `json:"active_projects"`
-	TotalActivities   int64            `json:"total_activities"`
-	TotalHours        float64          `json:"total_hours"`
-	AverageCompletion float64          `json:"average_completion"`
-	UserStats         []UserSummary    `json:"user_stats,omitempty"`
-	ProjectStats      []ProjectSummary `json:"project_stats,omitempty"`
-}
-
-type UserSummary struct {
-	UserID            uint    `json:"user_id"`
-	UserName          string  `json:"user_name"`
-	UserEmail         string  `json:"user_email"`
-	TotalActivities   int64   `json:"total_activities"`
-	TotalHours        float64 `json:"total_hours"`
-	AssignedProjects  int64   `json:"assigned_projects"`
-	AverageCompletion float64 `json:"average_completion"`
-}
-
-type ProjectSummary struct {
-	ProjectID         uint    `json:"project_id"`
-	ProjectName       string  `json:"project_name"`
-	AssignedUserID    *uint   `json:"assigned_user_id"`
-	AssignedUserName  string  `json:"assigned_user_name,omitempty"`
-	EstimatedHours    float64 `json:"estimated_hours"`
-	UsedHours         float64 `json:"used_hours"`
-	RemainingHours    float64 `json:"remaining_hours"`
-	CompletionPercent float64 `json:"completion_percent"`
-	IsActive          bool    `json:"is_active"`
-}
-
 // GetAreasSummary godoc
 // @Summary Get summary by areas
 // @Description Get aggregated statistics by area (SuperAdmin only)
@@ -51,7 +16,7 @@ type ProjectSummary struct {
 // @Produce json
 // @Security BearerAuth
 // @Param area_id query int false "Filter by specific area ID"
-// @Success 200 {object} utils.Response{data=[]AreaSummary}
+// @Success 200 {object} utils.Response{data=[]models.AreaSummary}
 // @Failure 401 {object} utils.Response
 // @Failure 403 {object} utils.Response
 // @Router /stats/areas [get]
@@ -77,10 +42,10 @@ func GetAreasSummary(c *gin.Context) {
 	var areas []models.Area
 	areaQuery.Find(&areas)
 
-	var summaries []AreaSummary
+	var summaries []models.AreaSummary
 
 	for _, area := range areas {
-		summary := AreaSummary{
+		summary := models.AreaSummary{
 			AreaID:   area.ID,
 			AreaName: area.Name,
 		}
@@ -121,7 +86,7 @@ func GetAreasSummary(c *gin.Context) {
 // @Security BearerAuth
 // @Param area_id query int false "Filter by area ID"
 // @Param user_id query int false "Filter by specific user ID"
-// @Success 200 {object} utils.Response{data=[]UserSummary}
+// @Success 200 {object} utils.Response{data=[]models.UserSummary}
 // @Failure 401 {object} utils.Response
 // @Router /stats/users [get]
 func GetUsersSummary(c *gin.Context) {
@@ -158,10 +123,10 @@ func GetUsersSummary(c *gin.Context) {
 	var users []models.User
 	userQuery.Find(&users)
 
-	var summaries []UserSummary
+	var summaries []models.UserSummary
 
 	for _, user := range users {
-		summary := UserSummary{
+		summary := models.UserSummary{
 			UserID:    user.ID,
 			UserName:  user.FullName,
 			UserEmail: user.Email,
@@ -200,7 +165,7 @@ func GetUsersSummary(c *gin.Context) {
 // @Param area_id query int false "Filter by area ID"
 // @Param assigned_user_id query int false "Filter by assigned user ID"
 // @Param active query bool false "Filter by active status"
-// @Success 200 {object} utils.Response{data=[]ProjectSummary}
+// @Success 200 {object} utils.Response{data=[]models.ProjectSummary}
 // @Failure 401 {object} utils.Response
 // @Router /stats/projects [get]
 func GetProjectsSummary(c *gin.Context) {
@@ -245,13 +210,12 @@ func GetProjectsSummary(c *gin.Context) {
 	var projects []models.Project
 	projectQuery.Find(&projects)
 
-	var summaries []ProjectSummary
+	var summaries []models.ProjectSummary
 
 	for _, project := range projects {
-		summary := ProjectSummary{
+		summary := models.ProjectSummary{
 			ProjectID:         project.ID,
 			ProjectName:       project.Name,
-			AssignedUserID:    project.AssignedUserID,
 			EstimatedHours:    project.EstimatedHours,
 			UsedHours:         project.UsedHours,
 			RemainingHours:    project.RemainingHours,
@@ -259,8 +223,18 @@ func GetProjectsSummary(c *gin.Context) {
 			IsActive:          project.IsActive,
 		}
 
-		if project.AssignedUser != nil {
-			summary.AssignedUserName = project.AssignedUser.FullName
+		// Load assigned users from junction table
+		var assignments []models.ProjectAssignment
+		config.DB.Where("project_id = ? AND is_active = ?", project.ID, true).Find(&assignments)
+
+		for _, assignment := range assignments {
+			summary.AssignedUserIDs = append(summary.AssignedUserIDs, assignment.UserID)
+
+			// Load user name
+			var user models.User
+			if err := config.DB.Select("full_name").First(&user, assignment.UserID).Error; err == nil {
+				summary.AssignedUserNames = append(summary.AssignedUserNames, user.FullName)
+			}
 		}
 
 		summaries = append(summaries, summary)

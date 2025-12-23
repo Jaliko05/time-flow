@@ -9,27 +9,6 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
-type CreateUserRequest struct {
-	Email        string      `json:"email" binding:"required,email"`
-	Password     string      `json:"password" binding:"required,min=6"`
-	FullName     string      `json:"full_name" binding:"required"`
-	Role         models.Role `json:"role" binding:"required"`
-	AreaID       *uint       `json:"area_id"`
-	WorkSchedule interface{} `json:"work_schedule"`
-	LunchBreak   interface{} `json:"lunch_break"`
-}
-
-type UpdateUserRequest struct {
-	Email        string      `json:"email" binding:"omitempty,email"`
-	Password     string      `json:"password" binding:"omitempty,min=6"`
-	FullName     string      `json:"full_name"`
-	Role         models.Role `json:"role"`
-	AreaID       *uint       `json:"area_id"`
-	WorkSchedule interface{} `json:"work_schedule"`
-	LunchBreak   interface{} `json:"lunch_break"`
-	IsActive     *bool       `json:"is_active"`
-}
-
 // GetUsers godoc
 // @Summary Get all users
 // @Description Get list of users with optional area filter. Admins see only their area, SuperAdmins see all.
@@ -123,7 +102,7 @@ func GetUser(c *gin.Context) {
 // @Failure 500 {object} utils.Response
 // @Router /users [post]
 func CreateUser(c *gin.Context) {
-	var req CreateUserRequest
+	var req models.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
@@ -209,7 +188,7 @@ func UpdateUser(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	var req UpdateUserRequest
+	var req models.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, 400, err.Error())
 		return
