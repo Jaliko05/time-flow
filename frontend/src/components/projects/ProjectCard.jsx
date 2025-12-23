@@ -6,6 +6,7 @@ import { Edit, Trash2, Eye, Clock, Users, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateProjectProgress } from "@/utils/helpers";
 import { PROJECT_TYPES } from "@/constants";
+import { UserAvatarGroup } from "@/components/common/UserAvatar";
 
 /**
  * Componente individual de tarjeta de proyecto
@@ -74,20 +75,27 @@ export function ProjectCard({ project, onEdit, onDelete }) {
 
         {/* Metadatos adicionales */}
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-          {project.assigned_user && (
-            <div className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              <span className="truncate">
-                {project.assigned_user.full_name}
-              </span>
-            </div>
-          )}
-          {project.task_count !== undefined && (
-            <div className="flex items-center gap-1">
-              <ListTodo className="h-3 w-3" />
-              <span>{project.task_count} tareas</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Show assigned users */}
+            {(project.assigned_users?.length > 0 || project.assigned_user) && (
+              <div className="flex items-center gap-1">
+                <UserAvatarGroup
+                  users={
+                    project.assigned_users ||
+                    (project.assigned_user ? [project.assigned_user] : [])
+                  }
+                  size="sm"
+                  maxVisible={3}
+                />
+              </div>
+            )}
+            {project.task_count !== undefined && (
+              <div className="flex items-center gap-1">
+                <ListTodo className="h-3 w-3" />
+                <span>{project.task_count} tareas</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Botones de acción */}

@@ -21,6 +21,7 @@ import TaskBoard from "../components/tasks/TaskBoard";
 import TaskFormDialog from "../components/tasks/TaskFormDialog";
 import CommentSection from "../components/tasks/CommentSection";
 import { useToast } from "@/hooks/use-toast";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 const STATUS_CONFIG = {
   unassigned: { label: "Sin asignar", color: "bg-gray-100 text-gray-800" },
@@ -216,14 +217,30 @@ export default function ProjectDetail() {
                   <span className="font-medium">{project.area.name}</span>
                 </div>
               )}
-              {project.assigned_user && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Asignado a:</span>
-                  <span className="font-medium">
-                    {project.assigned_user.full_name}
+
+              {/* Show team members */}
+              {(project.assigned_users?.length > 0 ||
+                project.assigned_user) && (
+                <div>
+                  <span className="text-muted-foreground block mb-2">
+                    Equipo ({project.assigned_users?.length || 1}):
                   </span>
+                  <div className="space-y-2">
+                    {(
+                      project.assigned_users ||
+                      (project.assigned_user ? [project.assigned_user] : [])
+                    ).map((member) => (
+                      <UserAvatar
+                        key={member.id}
+                        user={member}
+                        size="sm"
+                        showName={true}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Creado por:</span>
                 <span className="font-medium">

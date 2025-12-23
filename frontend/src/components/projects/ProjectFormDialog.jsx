@@ -24,13 +24,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Loader2, Save, CalendarIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Loader2,
+  Save,
+  CalendarIcon,
+  UserPlus,
+  Users as UsersIcon,
+} from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { usersAPI } from "@/api/users";
+import { UserBadge } from "@/components/common/UserAvatar";
 
 export default function ProjectFormDialog({
   project,
@@ -52,20 +60,29 @@ export default function ProjectFormDialog({
     name: "",
     description: "",
     project_type: "personal",
-    assigned_user_id: null,
+    assigned_user_ids: [], // Changed to array for multiple assignments
     start_date: null,
     due_date: null,
     priority: "medium",
   });
   const [errors, setErrors] = useState({});
+  const [showUserSelector, setShowUserSelector] = useState(false);
 
   useEffect(() => {
     if (project) {
+      // Get assigned user IDs from assigned_users or project_assignments
+      const assignedIds =
+        project.assigned_users?.map((u) => u.id) ||
+        project.project_assignments
+          ?.filter((a) => a.is_active)
+          .map((a) => a.user_id) ||
+        (project.assigned_user_id ? [project.assigned_user_id] : []);
+
       setFormData({
         name: project.name,
         description: project.description || "",
         project_type: project.project_type || "personal",
-        assigned_user_id: project.assigned_user_id || null,
+        assigned_user_ids: assignedIds,
         start_date: project.start_date ? new Date(project.start_date) : null,
         due_date: project.due_date ? new Date(project.due_date) : null,
         priority: project.priority || "medium",
@@ -75,12 +92,13 @@ export default function ProjectFormDialog({
         name: "",
         description: "",
         project_type: "personal", // Default to personal, admin can change to "area"
-        assigned_user_id: null,
+        assigned_user_ids: [],
         start_date: null,
         due_date: null,
         priority: "medium",
       });
     }
+    setShowUserSelector(false);
   }, [project, open, userRole]);
 
   const validateForm = () => {
@@ -121,8 +139,8 @@ export default function ProjectFormDialog({
     // Formatear fechas y preparar data
     const dataToSave = {
       ...formData,
-      assigned_user_id:
-        formData.project_type === "area" ? formData.assigned_user_id : null,
+      assigned_user_ids:
+        formData.project_type === "area" ? formData.assigned_user_ids : [],
       start_date: formData.start_date
         ? format(formData.start_date, "yyyy-MM-dd")
         : null,
@@ -132,6 +150,26 @@ export default function ProjectFormDialog({
     };
 
     onSubmit(dataToSave);
+  };
+
+  const toggleUserSelection = (userId) => {
+    setFormData((prev) => ({
+      ...prev,
+      assigned_user_ids: prev.assigned_user_ids.includes(userId)
+        ? prev.assigned_user_ids.filter((id) => id !== userId)
+        : [...prev.assigned_user_ids, userId],
+    }));
+  };
+
+  const removeUser = (userId) => {
+    setFormData((prev) => ({
+      ...prev,
+      assigned_user_ids: prev.assigned_user_ids.filter((id) => id !== userId),
+    }));
+  };
+
+  const getSelectedUsers = () => {
+    return users.filter((user) => formData.assigned_user_ids.includes(user.id));
   };
 
   const canCreateAreaProject =
@@ -195,8 +233,8 @@ export default function ProjectFormDialog({
                     setFormData((prev) => ({
                       ...prev,
                       project_type: value,
-                      assigned_user_id:
-                        value === "personal" ? null : prev.assigned_user_id,
+                      assigned_user_ids:
+                        value === "personal" ? [] : prev.assigned_user_ids,
                     }))
                   }
                 >
@@ -211,52 +249,97 @@ export default function ProjectFormDialog({
                 <p className="text-xs text-gray-500">
                   {formData.project_type === "personal"
                     ? "Proyecto personal - solo tú puedes registrar actividades"
-                    : "Proyecto de área - puedes asignarlo a usuarios ahora o después"}
+                    : "Proyecto de área - asigna múltiples usuarios al equipo"}
                 </p>
               </div>
 
               {formData.project_type === "area" && (
-                <div className="space-y-2">
-                  <Label htmlFor="assigned_user">
-                    Asignar a Usuario (Opcional)
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <UsersIcon className="h-4 w-4" />
+                    Miembros del Equipo ({formData.assigned_user_ids.length})
                   </Label>
-                  <Select
-                    value={
-                      formData.assigned_user_id?.toString() || "unassigned"
-                    }
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        assigned_user_id:
-                          value === "unassigned" ? null : parseInt(value),
-                      }))
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        errors.assigned_user_id ? "border-red-500" : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sin asignar (se puede asignar después)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Sin asignar</SelectItem>
-                      {users.map((user) => (
-                        <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.full_name} - {user.email}
-                        </SelectItem>
+
+                  {/* Selected users badges */}
+                  {formData.assigned_user_ids.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-3 bg-muted rounded-md">
+                      {getSelectedUsers().map((user) => (
+                        <UserBadge
+                          key={user.id}
+                          user={user}
+                          onRemove={removeUser}
+                        />
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500">
-                    Podrás asignar múltiples usuarios más adelante desde la
-                    gestión del proyecto
-                  </p>
-                  {errors.assigned_user_id && (
-                    <p className="text-xs text-red-500">
-                      {errors.assigned_user_id}
-                    </p>
+                    </div>
                   )}
+
+                  {/* Add users button */}
+                  <Popover
+                    open={showUserSelector}
+                    onOpenChange={setShowUserSelector}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        {formData.assigned_user_ids.length === 0
+                          ? "Seleccionar miembros del equipo"
+                          : "Agregar más miembros"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="start">
+                      <div className="p-3 border-b">
+                        <h4 className="font-medium text-sm">
+                          Seleccionar Usuarios
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Elige uno o más miembros del equipo
+                        </p>
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {users.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground text-center">
+                            No hay usuarios disponibles
+                          </div>
+                        ) : (
+                          <div className="p-2">
+                            {users.map((user) => (
+                              <div
+                                key={user.id}
+                                className="flex items-center gap-2 p-2 hover:bg-muted rounded-md cursor-pointer"
+                                onClick={() => toggleUserSelection(user.id)}
+                              >
+                                <Checkbox
+                                  checked={formData.assigned_user_ids.includes(
+                                    user.id
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleUserSelection(user.id)
+                                  }
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {user.full_name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {user.email}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <p className="text-xs text-gray-500">
+                    Todos los miembros seleccionados podrán ver y registrar
+                    actividades en este proyecto
+                  </p>
                 </div>
               )}
             </>
