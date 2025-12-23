@@ -1,8 +1,8 @@
 # Requerimientos de Refactorización - TimeFlow
 
 **Fecha:** 23 de Diciembre 2025  
-**Estado:** En Progreso - Fase 1 Completada ✅  
-**Última Actualización:** 23 de Diciembre 2025 - 14:35
+**Estado:** En Progreso - Fase 3 Completada ✅  
+**Última Actualización:** 23 de Diciembre 2025 - 15:20
 
 ---
 
@@ -394,20 +394,57 @@ Processes:
 
 ---
 
-### **FASE 3: Lógica de Asignación y Dependencias**
+### **FASE 3: Lógica de Asignación y Dependencias** ✅
 
-**Orden:** 3️⃣
+**Orden:** 3️⃣  
+**Estado:** Completado  
+**Fecha:** 23 de Diciembre 2025
 
-- [ ] Sistema de dependencias entre ProcessActivities
-- [ ] Validación de dependencias cumplidas
-- [ ] Asignación de usuarios a procesos
-- [ ] Query de proyectos visibles para usuarios
+- [x] Sistema de dependencias entre ProcessActivities
+- [x] Validación de dependencias cumplidas
+- [x] Asignación de usuarios a procesos
+- [x] Query de proyectos visibles para usuarios
+- [x] Endpoints de workload y carga de trabajo
+- [x] Endpoints de cadena de dependencias
 
-**Archivos a modificar:**
+**Archivos creados/modificados:**
 
-- `backend/handlers/processes.go`
-- `backend/services/dependency_service.go` (nuevo)
-- `backend/services/assignment_service.go` (nuevo)
+- ✅ `backend/services/dependency_service.go` (nuevo - 200 líneas)
+
+  - ValidateActivityDependency()
+  - CheckCircularDependency()
+  - GetBlockedActivities()
+  - GetDependencyChain()
+  - CanStartActivity()
+  - UpdateActivityStatus()
+
+- ✅ `backend/services/assignment_service.go` (nuevo - 250 líneas)
+
+  - AssignUserToProcess()
+  - RemoveUserFromProcess()
+  - GetUserAssignedProcesses()
+  - **GetProjectsVisibleToUser()** (query complejo con subqueries)
+  - GetUserWorkload()
+  - CanUserAccessProcess()
+
+- ✅ `backend/handlers/workload.go` (nuevo - 145 líneas)
+
+  - GET /users/:id/workload
+  - GET /users/:id/processes
+  - GET /process-activities/:id/dependency-chain
+  - GET /process-activities/:id/blocked
+  - DELETE /processes/:process_id/unassign/:user_id
+
+- ✅ `backend/handlers/projects.go` (modificado)
+  - GetProjects() refactorizado para usar AssignmentService.GetProjectsVisibleToUser()
+- ✅ `backend/handlers/processes.go` (modificado)
+
+  - GetProcessAssignments() agregado
+
+- ✅ `backend/routes/routes.go` (actualizado con nuevas rutas)
+
+**Endpoints nuevos:** 5  
+**Total Fase 3:** 5 endpoints + 2 servicios
 
 ---
 

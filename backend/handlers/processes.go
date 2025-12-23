@@ -725,6 +725,34 @@ func AssignUserToProcess(c *gin.Context) {
 	utils.SuccessResponse(c, 200, "User assigned successfully", gin.H{"message": "User assigned successfully"})
 }
 
+// GetProcessAssignments godoc
+// @Summary Get process assignments
+// @Description Get list of users assigned to a process
+// @Tags processes
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Process ID"
+// @Success 200 {object} utils.Response{data=[]models.User}
+// @Failure 400 {object} utils.Response
+// @Failure 404 {object} utils.Response
+// @Router /processes/{id}/assignments [get]
+func GetProcessAssignments(c *gin.Context) {
+	processIDStr := c.Param("id")
+	processID, err := strconv.ParseUint(processIDStr, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid process ID")
+		return
+	}
+
+	var process models.Process
+	if err := config.DB.Preload("AssignedUsers").First(&process, uint(processID)).Error; err != nil {
+		utils.ErrorResponse(c, 404, "Process not found")
+		return
+	}
+
+	utils.SuccessResponse(c, 200, "Process assignments retrieved successfully", process.AssignedUsers)
+}
+
 // ValidateDependencies godoc
 // @Summary Validate if activity can start
 // @Description Check if an activity's dependencies are met and it can start

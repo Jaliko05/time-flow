@@ -64,6 +64,10 @@ func SetupRoutes(router *gin.Engine) {
 				users.POST("", middleware.RequireRole(models.RoleSuperAdmin, models.RoleAdmin), handlers.CreateUser)
 				users.PUT("/:id", middleware.RequireRole(models.RoleSuperAdmin, models.RoleAdmin), handlers.UpdateUser)
 				users.DELETE("/:id", middleware.RequireRole(models.RoleSuperAdmin), handlers.DeleteUser)
+
+				// NEW: User workload and processes
+				users.GET("/:id/workload", handlers.GetUserWorkload)
+				users.GET("/:id/processes", handlers.GetUserProcesses)
 			}
 
 			// Project routes
@@ -71,7 +75,7 @@ func SetupRoutes(router *gin.Engine) {
 			{
 				projects.GET("", handlers.GetProjects)
 				projects.GET("/:id", handlers.GetProject)
-				projects.POST("", middleware.CanCreateProject(), handlers.CreateProject)
+				projects.POST("", middleware.RequireRole(models.RoleSuperAdmin, models.RoleAdmin), handlers.CreateProject)
 				projects.PUT("/:id", handlers.UpdateProject)
 				projects.PATCH("/:id/status", handlers.UpdateProjectStatus)
 				projects.DELETE("/:id", handlers.DeleteProject)
@@ -115,6 +119,8 @@ func SetupRoutes(router *gin.Engine) {
 				processes.PUT("/:id", middleware.CanManageProcesses(), handlers.UpdateProcess)
 				processes.DELETE("/:id", middleware.CanManageProcesses(), handlers.DeleteProcess)
 				processes.POST("/:process_id/assign", middleware.CanManageProcesses(), handlers.AssignUserToProcess)
+				processes.GET("/:id/assignments", handlers.GetProcessAssignments)
+				processes.DELETE("/:process_id/unassign/:user_id", middleware.CanManageProcesses(), handlers.RemoveUserFromProcess)
 
 				// Process activities
 				processes.GET("/:process_id/activities", handlers.GetProcessActivities)
@@ -126,6 +132,8 @@ func SetupRoutes(router *gin.Engine) {
 			{
 				processActivities.PUT("/:id", handlers.UpdateProcessActivity)
 				processActivities.GET("/:id/can-start", handlers.ValidateDependencies)
+				processActivities.GET("/:id/dependency-chain", handlers.GetActivityDependencyChain)
+				processActivities.GET("/:id/blocked", handlers.GetBlockedActivities)
 			}
 
 			// Activity routes (existing + new process creation)

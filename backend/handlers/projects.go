@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jaliko05/time-flow/config"
 	"github.com/jaliko05/time-flow/models"
+	"github.com/jaliko05/time-flow/services"
 	"github.com/jaliko05/time-flow/utils"
 )
 
@@ -32,9 +33,30 @@ func GetProjects(c *gin.Context) {
 	// Apply filters based on role
 	role := userRole.(models.Role)
 	if role == models.RoleUser {
-		// Regular users see projects assigned to them through project_assignments
-		query = query.Joins("LEFT JOIN project_assignments ON project_assignments.project_id = projects.id").
-			Where("project_assignments.user_id = ? AND project_assignments.is_active = ?", userID, true)
+		// NUEVO: Usuarios ven proyectos asignados directamente + proyectos con procesos asignados
+		assignmentService := services.NewAssignmentService()
+		projects, err := assignmentService.GetProjectsVisibleToUser(userID.(uint))
+		if err != nil {
+			utils.ErrorResponse(c, 500, "Failed to retrieve projects")
+			return
+		}
+
+		// Aplicar filtros opcionales si existen
+		filteredProjects := projects
+		if activeStr := c.Query("active"); activeStr != "" {
+			var filtered []models.Project
+			for _, proj := range projects {
+				if activeStr == "true" && proj.IsActive {
+					filtered = append(filtered, proj)
+				} else if activeStr == "false" && !proj.IsActive {
+					filtered = append(filtered, proj)
+				}
+			}
+			filteredProjects = filtered
+		}
+
+		utils.SuccessResponse(c, 200, "Projects retrieved successfully", filteredProjects)
+		return
 	} else if role == models.RoleAdmin {
 		// Admins see projects from their area
 		if userAreaID != nil {
