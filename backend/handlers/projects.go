@@ -27,8 +27,8 @@ type UpdateProjectRequest struct {
 	AssignedUserID *uint                   `json:"assigned_user_id"`
 	Priority       *models.ProjectPriority `json:"priority" binding:"omitempty,oneof=low medium high critical"`
 	EstimatedHours *float64                `json:"estimated_hours" binding:"omitempty,gt=0"`
-	StartDate      *time.Time              `json:"start_date"`
-	DueDate        *time.Time              `json:"due_date"`
+	StartDate      *string                 `json:"start_date"`
+	DueDate        *string                 `json:"due_date"`
 	IsActive       *bool                   `json:"is_active"`
 }
 
@@ -133,7 +133,12 @@ func GetProject(c *gin.Context) {
 		}
 	}
 	if role == models.RoleAdmin {
-		if userAreaID == nil || project.AreaID == nil || *project.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if project.AreaID == nil || *project.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Access denied")
 			return
 		}
@@ -193,14 +198,37 @@ func CreateProject(c *gin.Context) {
 			req.AssignedUserID = &creatorID
 		}
 	}
+
+	// Validate assigned user if provided
+	if req.AssignedUserID != nil {
+		var assignedUser models.User
+		if err := config.DB.First(&assignedUser, *req.AssignedUserID).Error; err != nil {
+			utils.ErrorResponse(c, 404, "Assigned user not found")
+			return
+		}
+
+		// If admin creating area project, check that assigned user belongs to the same area
+		if role == models.RoleAdmin && req.ProjectType == models.ProjectTypeArea {
+			areaID, ok := userAreaID.(*uint)
+			if !ok || areaID == nil {
+				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+				return
+			}
+			if assignedUser.AreaID == nil || *assignedUser.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only assign users from your area")
+				return
+			}
+		}
+	}
 	// Note: Area projects can be created without assignment now
 	// Assignment can be done later via separate endpoint
 
 	// Set area_id for area projects, nil for personal
 	var projectAreaID *uint
 	if req.ProjectType == models.ProjectTypeArea && userAreaID != nil {
-		areaID := *userAreaID.(*uint)
-		projectAreaID = &areaID
+		if areaID, ok := userAreaID.(*uint); ok && areaID != nil {
+			projectAreaID = areaID
+		}
 	}
 
 	// Set default priority if not provided
@@ -297,9 +325,36 @@ func UpdateProject(c *gin.Context) {
 	}
 
 	if role == models.RoleAdmin {
-		if userAreaID == nil || project.AreaID == nil || *project.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if project.AreaID == nil || *project.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Can only update projects in your area")
 			return
+		}
+	}
+
+	// Validate assigned user if provided
+	if req.AssignedUserID != nil {
+		var assignedUser models.User
+		if err := config.DB.First(&assignedUser, *req.AssignedUserID).Error; err != nil {
+			utils.ErrorResponse(c, 404, "Assigned user not found")
+			return
+		}
+
+		// If admin, check that assigned user belongs to the same area
+		if role == models.RoleAdmin {
+			areaID, ok := userAreaID.(*uint)
+			if !ok || areaID == nil {
+				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+				return
+			}
+			if assignedUser.AreaID == nil || *assignedUser.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only assign users from your area")
+				return
+			}
 		}
 	}
 
@@ -323,11 +378,21 @@ func UpdateProject(c *gin.Context) {
 	if req.Priority != nil {
 		project.Priority = *req.Priority
 	}
-	if req.StartDate != nil {
-		project.StartDate = req.StartDate
+	if req.StartDate != nil && *req.StartDate != "" {
+		parsed, err := time.Parse("2006-01-02", *req.StartDate)
+		if err != nil {
+			utils.ErrorResponse(c, 400, "Invalid start_date format. Use YYYY-MM-DD")
+			return
+		}
+		project.StartDate = &parsed
 	}
-	if req.DueDate != nil {
-		project.DueDate = req.DueDate
+	if req.DueDate != nil && *req.DueDate != "" {
+		parsed, err := time.Parse("2006-01-02", *req.DueDate)
+		if err != nil {
+			utils.ErrorResponse(c, 400, "Invalid due_date format. Use YYYY-MM-DD")
+			return
+		}
+		project.DueDate = &parsed
 	}
 	if req.IsActive != nil {
 		project.IsActive = *req.IsActive
@@ -375,7 +440,12 @@ func DeleteProject(c *gin.Context) {
 	}
 
 	if role == models.RoleAdmin {
-		if userAreaID == nil || project.AreaID == nil || *project.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if project.AreaID == nil || *project.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Can only delete projects in your area")
 			return
 		}
@@ -430,8 +500,10 @@ func UpdateProjectStatus(c *gin.Context) {
 		canUpdate = true
 	} else if role == models.RoleAdmin {
 		// Admin can update area projects in their area
-		if project.ProjectType == models.ProjectTypeArea && userAreaID != nil && project.AreaID != nil && *project.AreaID == *userAreaID.(*uint) {
-			canUpdate = true
+		if project.ProjectType == models.ProjectTypeArea {
+			if areaID, ok := userAreaID.(*uint); ok && areaID != nil && project.AreaID != nil && *project.AreaID == *areaID {
+				canUpdate = true
+			}
 		}
 	} else if role == models.RoleUser {
 		// User can update their own personal projects or projects assigned to them

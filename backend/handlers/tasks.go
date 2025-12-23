@@ -149,7 +149,12 @@ func GetTask(c *gin.Context) {
 			utils.ErrorResponse(c, 500, "Failed to verify permissions")
 			return
 		}
-		if userAreaID == nil || project.AreaID == nil || *project.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if project.AreaID == nil || *project.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Access denied")
 			return
 		}
@@ -192,7 +197,12 @@ func CreateTask(c *gin.Context) {
 	// Check permissions
 	role := userRole.(models.Role)
 	if role == models.RoleAdmin {
-		if userAreaID == nil || project.AreaID == nil || *project.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if project.AreaID == nil || *project.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Cannot create task for project outside your area")
 			return
 		}
@@ -281,7 +291,12 @@ func UpdateTask(c *gin.Context) {
 	// Check permissions
 	role := userRole.(models.Role)
 	if role == models.RoleAdmin {
-		if userAreaID == nil || task.Project.AreaID == nil || *task.Project.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if task.Project.AreaID == nil || *task.Project.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Access denied")
 			return
 		}
@@ -396,7 +411,8 @@ func UpdateTaskStatus(c *gin.Context) {
 	if role == models.RoleSuperAdmin {
 		canUpdate = true
 	} else if role == models.RoleAdmin {
-		if userAreaID != nil && task.Project.AreaID != nil && *task.Project.AreaID == *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if ok && areaID != nil && task.Project.AreaID != nil && *task.Project.AreaID == *areaID {
 			canUpdate = true
 		}
 	} else if role == models.RoleUser {
@@ -462,7 +478,8 @@ func BulkUpdateTaskOrder(c *gin.Context) {
 		// Check permissions
 		role := userRole.(models.Role)
 		if role == models.RoleAdmin {
-			if userAreaID == nil || task.Project.AreaID == nil || *task.Project.AreaID != *userAreaID.(*uint) {
+			areaID, ok := userAreaID.(*uint)
+			if !ok || areaID == nil || task.Project.AreaID == nil || *task.Project.AreaID != *areaID {
 				continue // Skip tasks user can't access
 			}
 		}
@@ -498,7 +515,12 @@ func DeleteTask(c *gin.Context) {
 	// Check permissions - only Admins and SuperAdmins can delete tasks
 	role := userRole.(models.Role)
 	if role == models.RoleAdmin {
-		if userAreaID == nil || task.Project.AreaID == nil || *task.Project.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if task.Project.AreaID == nil || *task.Project.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Access denied")
 			return
 		}

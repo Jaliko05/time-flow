@@ -68,7 +68,12 @@ func GetComments(c *gin.Context) {
 				return
 			}
 		} else if role == models.RoleAdmin {
-			if userAreaID == nil || project.AreaID == nil || *project.AreaID != *userAreaID.(*uint) {
+			areaID, ok := userAreaID.(*uint)
+			if !ok || areaID == nil {
+				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+				return
+			}
+			if project.AreaID == nil || *project.AreaID != *areaID {
 				utils.ErrorResponse(c, 403, "Access denied")
 				return
 			}
@@ -99,7 +104,12 @@ func GetComments(c *gin.Context) {
 				return
 			}
 		} else if role == models.RoleAdmin {
-			if userAreaID == nil || task.Project.AreaID == nil || *task.Project.AreaID != *userAreaID.(*uint) {
+			areaID, ok := userAreaID.(*uint)
+			if !ok || areaID == nil {
+				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+				return
+			}
+			if task.Project.AreaID == nil || *task.Project.AreaID != *areaID {
 				utils.ErrorResponse(c, 403, "Access denied")
 				return
 			}
@@ -169,7 +179,12 @@ func CreateComment(c *gin.Context) {
 				return
 			}
 		} else if role == models.RoleAdmin {
-			if userAreaID == nil || project.AreaID == nil || *project.AreaID != *userAreaID.(*uint) {
+			areaID, ok := userAreaID.(*uint)
+			if !ok || areaID == nil {
+				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+				return
+			}
+			if project.AreaID == nil || *project.AreaID != *areaID {
 				utils.ErrorResponse(c, 403, "You can only comment on projects in your area")
 				return
 			}
@@ -190,7 +205,12 @@ func CreateComment(c *gin.Context) {
 				return
 			}
 		} else if role == models.RoleAdmin {
-			if userAreaID == nil || task.Project.AreaID == nil || *task.Project.AreaID != *userAreaID.(*uint) {
+			areaID, ok := userAreaID.(*uint)
+			if !ok || areaID == nil {
+				utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+				return
+			}
+			if task.Project.AreaID == nil || *task.Project.AreaID != *areaID {
 				utils.ErrorResponse(c, 403, "You can only comment on tasks in projects in your area")
 				return
 			}

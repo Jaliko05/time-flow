@@ -174,7 +174,12 @@ func GetActivity(c *gin.Context) {
 		return
 	}
 	if role == models.RoleAdmin {
-		if userAreaID == nil || activity.AreaID == nil || *activity.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if activity.AreaID == nil || *activity.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Access denied")
 			return
 		}

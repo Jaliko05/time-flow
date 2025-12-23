@@ -144,7 +144,8 @@ func CreateUser(c *gin.Context) {
 			utils.ErrorResponse(c, 403, "Admin can only create users with 'user' role")
 			return
 		}
-		if req.AreaID == nil || userAreaID == nil || *req.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil || req.AreaID == nil || *req.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Admin can only create users in their area")
 			return
 		}
@@ -222,7 +223,12 @@ func UpdateUser(c *gin.Context) {
 
 	// Admin can only update users in their area
 	if userRole == models.RoleAdmin {
-		if userAreaID == nil || user.AreaID == nil || *user.AreaID != *userAreaID.(*uint) {
+		areaID, ok := userAreaID.(*uint)
+		if !ok || areaID == nil {
+			utils.ErrorResponse(c, 403, "Admin must have an area assigned")
+			return
+		}
+		if user.AreaID == nil || *user.AreaID != *areaID {
 			utils.ErrorResponse(c, 403, "Cannot update users from other areas")
 			return
 		}
