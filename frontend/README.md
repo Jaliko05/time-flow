@@ -1,20 +1,55 @@
-# Base44 App
+# Frontend - Time Flow
 
+> ⚠️ **Nota**: Este archivo contiene información básica. Para documentación completa, ver [DOCUMENTATION.md](./DOCUMENTATION.md)
 
-This app was created automatically by Base44.
-It's a Vite+React app that communicates with the Base44 API.
+## 🚀 Inicio Rápido
 
-## Running the app
+### Requisitos
 
-```bash
-npm install
-npm run dev
-```
+- Node.js 18+
+- pnpm
 
-## Building the app
+### Instalación
 
 ```bash
-npm run build
+cd frontend
+pnpm install
 ```
 
-For more information and support, please contact Base44 support at app@base44.com.
+### Configuración
+
+Crear archivo `.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+VITE_MICROSOFT_CLIENT_ID=tu_client_id
+VITE_MICROSOFT_TENANT_ID=tu_tenant_id
+VITE_MICROSOFT_REDIRECT_URI=http://localhost:5173/auth/callback
+```
+
+### Ejecutar
+
+```bash
+pnpm dev
+```
+
+**URL:** http://localhost:5173
+
+### Build
+
+```bash
+pnpm build
+```
+
+## 📚 Documentación Completa
+
+Ver [DOCUMENTATION.md](./DOCUMENTATION.md) para:
+
+- Arquitectura detallada
+- Sistema de autenticación (Local + Microsoft)
+- Componentes principales
+- Hooks personalizados
+- Integración con Microsoft Calendar
+- API Cliente
+- Guía de deployment
+- Troubleshooting

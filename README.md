@@ -4,33 +4,42 @@ Sistema completo de gestión de tiempo, proyectos y actividades con control de a
 
 ## 🌟 Características Principales
 
-- 🔐 **Autenticación OAuth 2.0** - Integración con Microsoft Azure AD
-- 👥 **Sistema de Roles** - SuperAdmin, Admin de Área y Usuarios
-- 🏢 **Gestión por Áreas** - Control granular de permisos por departamento
-- 📋 **Planner/Kanban** - Gestión de proyectos y tareas con vista Kanban
-- ⏱️ **Registro de Actividades** - Seguimiento detallado de tiempo invertido
-- 🎯 **Asignación de Tareas** - Los admins pueden asignar proyectos y tareas a usuarios
-- 📊 **Seguimiento de Progreso** - Métricas automáticas de horas y completitud
-- 📈 **Estadísticas y Reportes** - Análisis de productividad y tiempo
-- 📅 **Integración con Calendar** - Conversión de reuniones en actividades
-- 📱 **Interfaz Responsiva** - Diseño moderno con Tailwind CSS
+- 🔐 **Autenticación Dual** - Local (email/password) + OAuth 2.0 (Microsoft Azure AD)
+- 👥 **Sistema de Roles** - SuperAdmin, Admin de Área y Usuarios con permisos granulares
+- 🏢 **Gestión por Áreas** - Control departamental con aprobación de usuarios
+- 📋 **Planner/Kanban** - Gestión visual de proyectos y tareas
+- ⏱️ **Registro de Actividades** - Seguimiento detallado de tiempo con métricas automáticas
+- 🎯 **Asignaciones Múltiples** - Asignar proyectos/tareas a múltiples usuarios
+- 📊 **Seguimiento en Tiempo Real** - Actualización automática de horas y progreso
+- 📈 **Estadísticas y Reportes** - Dashboard con análisis de productividad
+- 📅 **Integración con Microsoft Calendar** - Conversión de reuniones en actividades
+- 📱 **Interfaz Responsiva** - Diseño moderno con Tailwind CSS y Shadcn/ui
 - 📚 **API Documentada** - Swagger UI interactiva
+- ⚡ **Optimización de BD** - Índices automáticos para queries rápidas
 
-## 🎯 Perfiles de Usuario
+## 🎯 Perfiles de Usuario y Flujo de Aprobación
+
+### Flujo de Registro con Microsoft OAuth
+
+1. **Usuario nuevo** inicia sesión con Microsoft → Se crea cuenta inactiva
+2. **SuperAdmin** ve notificación de usuario pendiente
+3. **SuperAdmin** aprueba, asigna rol y área
+4. **Usuario** puede acceder al sistema con permisos asignados
 
 ### SuperAdmin
 
 - Acceso completo al sistema
-- Gestión de áreas y usuarios
+- Gestión de áreas y aprobación de usuarios
 - Vista global de todos los proyectos y actividades
 - Estadísticas de toda la organización
+- Creación de otros SuperAdmins
 
 ### Admin de Área
 
-- Gestión de usuarios de su área
-- Creación de proyectos de área
-- Asignación de proyectos y tareas a usuarios
-- Seguimiento de actividades del área
+- Gestión de usuarios de su área específica
+- Creación de proyectos personales y de área
+- Asignación múltiple de proyectos/tareas a usuarios del área
+- Seguimiento de actividades y tareas del área
 - Estadísticas del área
 
 ### Usuario
@@ -40,16 +49,18 @@ Sistema completo de gestión de tiempo, proyectos y actividades con control de a
 - Registro de actividades diarias
 - Vinculación de actividades a proyectos/tareas
 - Estadísticas personales
+- Conversión de reuniones de calendario en actividades
 
 ## 🏗️ Arquitectura
 
 ### Backend (Go)
 
 - **Framework**: Gin
-- **ORM**: GORM
-- **Base de Datos**: PostgreSQL
+- **ORM**: GORM con migraciones automáticas
+- **Base de Datos**: PostgreSQL con índices optimizados
 - **Autenticación**: JWT + OAuth 2.0 (Microsoft)
 - **Documentación**: Swagger/OpenAPI
+- **Arquitectura**: Servicios + Handlers + Helpers
 
 ### Frontend (React)
 
@@ -57,9 +68,11 @@ Sistema completo de gestión de tiempo, proyectos y actividades con control de a
 - **Build Tool**: Vite
 - **Routing**: React Router v6
 - **State Management**: React Query (TanStack Query)
+- **Autenticación**: MSAL (Microsoft Authentication Library)
 - **UI Components**: Shadcn/ui
 - **Estilos**: Tailwind CSS
 - **HTTP Client**: Axios
+- **Hooks Personalizados**: useProjects, useAuth
 
 ## 📦 Modelos de Datos
 
@@ -68,111 +81,207 @@ Sistema completo de gestión de tiempo, proyectos y actividades con control de a
 ```
 Area (Departamento)
 ├── Users (Usuarios del área)
-├── Projects (Proyectos del área)
+├── Projects (Proyectos del área/personales)
+    ├── ProjectAssignments (Asignaciones múltiples)
     └── Tasks (Tareas del proyecto)
-        └── Activities (Actividades registradas en la tarea)
+        ├── TaskAssignments (Asignaciones múltiples)
+        └── Activities (Tiempo registrado)
 ```
 
-### Estados de Proyecto
+### Estados y Prioridades
+
+**Estados de Proyecto:**
 
 - `unassigned` - Sin asignar
-- `assigned` - Asignado a usuario
+- `assigned` - Asignado a usuario(s)
 - `in_progress` - En progreso
 - `paused` - Pausado
 - `completed` - Completado
 
-### Estados de Tarea
+**Estados de Tarea:**
 
 - `backlog` - En backlog
-- `assigned` - Asignada a usuario
+- `assigned` - Asignada a usuario(s)
 - `in_progress` - En progreso
 - `paused` - Pausada
 - `completed` - Completada
 
+**Prioridades:**
+
+- `low` - Baja (Verde)
+- `medium` - Media (Amarilla)
+- `high` - Alta (Naranja)
+- `urgent` - Urgente (Roja)
+
 ## 📋 Requisitos
 
-- Go 1.21 o superior
-- Node.js 18 o superior
-- PostgreSQL 13 o superior
-- Cuenta de Azure AD (para OAuth)
+- **Go** 1.21 o superior
+- **Node.js** 18 o superior + pnpm
+- **PostgreSQL** 13 o superior
+- **Cuenta de Azure AD** (opcional, para OAuth)
 
 ## 🚀 Instalación Rápida
 
-### Opción 1: Script Automático (Windows)
+### 1. Base de Datos
+
+```sql
+-- Conectar a PostgreSQL
+psql -U postgres
+
+-- Crear base de datos
+CREATE DATABASE timeflow;
+```
+
+### 2. Configurar Backend
 
 ```powershell
-# Clonar el repositorio
-git clone https://github.com/Jaliko05/time-flow.git
-cd time-flow
+cd backend
 
-# Ejecutar setup
-.\setup.ps1
+# Crear archivo .env
+@"
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=tu_password
+DB_NAME=timeflow
+DB_SSLMODE=disable
 
-# Crear la base de datos
-psql -U postgres -c "CREATE DATABASE timeflow;"
+PORT=8080
+GIN_MODE=debug
 
-# Ejecutar el proyecto
-.\run.ps1
+JWT_SECRET=cambia_este_secreto_en_produccion_minimo_32_caracteres
+
+# Microsoft OAuth (opcional)
+MICROSOFT_CLIENT_ID=tu_client_id
+MICROSOFT_CLIENT_SECRET=tu_client_secret
+MICROSOFT_TENANT_ID=tu_tenant_id
+MICROSOFT_REDIRECT_URI=http://localhost:5173/auth/callback
+"@ | Out-File -FilePath .env -Encoding UTF8
+
+# Instalar y ejecutar
+go mod download
+go run main.go
 ```
 
-### Opción 2: Manual
+**El backend:**
 
-Ver [INSTALLATION.md](INSTALLATION.md) para instrucciones detalladas.
+- Aplicará migraciones automáticamente
+- Creará índices para optimización
+- Creará usuario SuperAdmin por defecto
+- Estará disponible en: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger/index.html`
 
-## 🔑 Acceso Inicial
+### 3. Configurar Frontend
 
-Una vez iniciado el sistema, accede con:
+```powershell
+cd frontend
 
-- **URL**: http://localhost:5173
-- **Email**: admin@timeflow.com
-- **Password**: admin123
-- **Rol**: SuperAdmin
+# Crear archivo .env
+@"
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+VITE_MICROSOFT_CLIENT_ID=tu_client_id
+VITE_MICROSOFT_TENANT_ID=tu_tenant_id
+VITE_MICROSOFT_REDIRECT_URI=http://localhost:5173/auth/callback
+"@ | Out-File -FilePath .env -Encoding UTF8
 
-## 📂 Estructura del Proyecto
-
-```
-time-flow/
-├── backend/              # API en Go
-│   ├── config/          # Configuración de BD
-│   ├── handlers/        # Controladores HTTP
-│   ├── middleware/      # Middlewares
-│   ├── models/          # Modelos de datos
-│   ├── routes/          # Rutas de la API
-│   ├── utils/           # Utilidades
-│   └── main.go          # Punto de entrada
-│
-├── frontend/            # Aplicación React
-│   ├── src/
-│   │   ├── api/        # Clientes API
-│   │   ├── components/ # Componentes React
-│   │   ├── pages/      # Páginas
-│   │   └── hooks/      # Hooks personalizados
-│   └── package.json
-│
-├── setup.ps1            # Script de instalación
-├── run.ps1              # Script para ejecutar
-└── INSTALLATION.md      # Guía detallada
+# Instalar y ejecutar
+pnpm install
+pnpm dev
 ```
 
-## 👥 Sistema de Roles
+**El frontend estará disponible en: `http://localhost:5173`**
 
-### 🔴 SuperAdmin
+### 4. Primer Acceso
 
-- Acceso total al sistema
-- Gestión de todas las áreas
-- Gestión de todos los usuarios
-- Vista consolidada de todas las actividades
-- Único rol que puede eliminar áreas y usuarios
+**Credenciales por defecto:**
 
-### 🟡 Admin
+- Email: `admin@timeflow.com`
+- Password: `admin123`
 
-- Acceso limitado a su área asignada
-- Gestión de usuarios de su área
-- Creación de usuarios regulares
-- Vista de actividades de su área
-- No puede cambiar roles de usuarios
+⚠️ **IMPORTANTE:** Cambiar esta contraseña después del primer inicio de sesión.
 
-### 🟢 User
+## 📚 Documentación Adicional
+
+- **[Backend Documentation](./backend/DOCUMENTATION.md)** - API completa, configuración y deployment
+- **[Frontend Documentation](./frontend/DOCUMENTATION.md)** - Componentes, autenticación y desarrollo
+
+## 🚀 Deployment a Producción
+
+### Checklist de Seguridad
+
+- [ ] Cambiar `JWT_SECRET` (mínimo 32 caracteres aleatorios)
+- [ ] Cambiar contraseña del SuperAdmin
+- [ ] Configurar `DB_SSLMODE=require`
+- [ ] Habilitar HTTPS
+- [ ] Configurar CORS solo para dominios permitidos
+- [ ] Configurar `GIN_MODE=release`
+
+### Opciones de Deployment
+
+1. **Azure App Service** (Recomendado)
+2. **Docker + Docker Compose**
+3. **Servidores VPS** (DigitalOcean, Linode)
+
+Ver guía completa en [backend/DOCUMENTATION.md](./backend/DOCUMENTATION.md#deployment)
+
+## ⚡ Performance
+
+### Optimizaciones Implementadas
+
+- **Migraciones automáticas**: 13 índices aplicados al inicio
+- **Queries optimizadas**: De 30+ segundos a <100ms
+- **Logger de queries lentas**: Detecta queries >200ms
+- **Actualización en tiempo real**: Horas y progreso calculados automáticamente
+
+### Resultados
+
+| Query                   | Antes    | Después |
+| ----------------------- | -------- | ------- |
+| Usuarios por área       | 30+ seg  | < 50ms  |
+| Proyectos por creador   | 5-10 seg | < 100ms |
+| Actividades por usuario | 3-8 seg  | < 80ms  |
+
+## 🔧 Troubleshooting
+
+### Error: Query lenta de usuarios por área
+
+**Solución:** Las migraciones automáticas crean el índice. Si persiste:
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_users_area_id ON users(area_id);
+```
+
+### Error: "onSave is not a function"
+
+Ya corregido en `ProjectFormDialog.jsx`. Asegúrate de tener la última versión.
+
+### Error: "Usuario pendiente de aprobación"
+
+Normal para nuevos usuarios con Microsoft OAuth. El SuperAdmin debe aprobar desde Dashboard > Usuarios.
+
+### Error: No se pueden crear proyectos de área
+
+Verifica que:
+
+1. El usuario sea Admin de Área o SuperAdmin
+2. Tenga un área asignada (`area_id`)
+3. El `project_type` sea exactamente `"area"` o `"personal"`
+
+## 🤝 Contribución
+
+1. Fork el repositorio
+2. Crea una rama: `git checkout -b feature/nueva-funcionalidad`
+3. Commit cambios: `git commit -am 'Agregar nueva funcionalidad'`
+4. Push: `git push origin feature/nueva-funcionalidad`
+5. Crea un Pull Request
+
+## 📄 Licencia
+
+Este proyecto es privado y propietario.
+
+## 👤 Contacto
+
+Para soporte y preguntas, contacta al equipo de desarrollo.
 
 - Acceso a sus propios datos
 - Creación y gestión de proyectos personales

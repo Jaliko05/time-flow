@@ -11,10 +11,15 @@ import ProjectKanban from "../projects/ProjectKanban";
 import ProjectFormDialog from "../projects/ProjectFormDialog";
 import QuickActivityForm from "./QuickActivityForm";
 import TodayActivities from "./TodayActivities";
+import DailyProgressBar from "./DailyProgressBar";
+import { useQuery } from "@tanstack/react-query";
+import { activitiesAPI } from "@/api";
+import { format } from "date-fns";
 
 export default function UserDashboard({ user }) {
   const [activeTab, setActiveTab] = useState("activities");
   const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const {
     projects,
@@ -22,6 +27,22 @@ export default function UserDashboard({ user }) {
     createProject,
     isCreating,
   } = useUserProjects(user);
+
+  // Obtener actividades del día para calcular horas
+  const { data: todayActivities = [] } = useQuery({
+    queryKey: ["activities", user.id, today],
+    queryFn: () => activitiesAPI.getAll({ date: today }),
+    enabled: !!user?.id,
+  });
+
+  // Calcular horas totales del día
+  const totalHoursToday = todayActivities.reduce(
+    (sum, activity) => sum + parseFloat(activity.execution_time || 0),
+    0
+  );
+
+  // Meta diaria (puedes ajustar esto según tus necesidades, por defecto 8 horas)
+  const dailyGoal = 8;
 
   const handleCreateProject = (data) => {
     createProject(
@@ -67,6 +88,9 @@ export default function UserDashboard({ user }) {
 
         {/* Tab: Actividades del Día */}
         <TabsContent value="activities" className="space-y-6">
+          {/* Barra de progreso diario */}
+          <DailyProgressBar current={totalHoursToday} expected={dailyGoal} />
+
           <div className="grid gap-6 md:grid-cols-2">
             {/* Formulario de actividad rápida */}
             <Card>

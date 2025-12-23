@@ -1,102 +1,67 @@
-# Time Flow Backend
+# Backend - Time Flow
 
-API REST para el sistema de gestión de tiempo Time Flow, construida con Go, Gin, GORM y PostgreSQL.
+> ⚠️ **Nota**: Este archivo contiene información básica. Para documentación completa, ver [DOCUMENTATION.md](./DOCUMENTATION.md)
 
-## 🚀 Características
+## 🚀 Inicio Rápido
 
-- **Autenticación Dual** - Login local (email/password) y Microsoft OAuth 2.0
-- **Integración con Microsoft Calendar** - Ver y convertir reuniones en actividades (opcional)
-- **JWT** con roles (SuperAdmin, Admin, User)
-- **Control de acceso por áreas** - SuperAdmin ve todo, Admin solo su área
-- **CRUD completo** para Usuarios, Áreas, Proyectos y Actividades
-- **Estadísticas** de actividades con filtros avanzados
-- **Documentación Swagger** interactiva
-- **Base de datos PostgreSQL** con GORM
-- **Migraciones automáticas**
+### Requisitos
 
-## 📋 Requisitos
+- Go 1.21+
+- PostgreSQL 13+
 
-- Go 1.21 o superior
-- PostgreSQL 13 o superior
-- Make (opcional, para comandos simplificados)
-
-## 🔧 Instalación
-
-1. **Clonar el repositorio**
+### Instalación
 
 ```bash
 cd backend
-```
-
-2. **Instalar dependencias**
-
-```bash
 go mod download
-# o con Make:
-make install
 ```
 
-3. **Configurar variables de entorno**
+### Configuración
 
-```bash
-cp .env.example .env
-# Editar .env con tus configuraciones
-```
-
-Variables importantes:
+Crear archivo `.env`:
 
 ```env
-# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=timeflow
+DB_SSLMODE=disable
 
-# JWT
-JWT_SECRET=tu-secret-super-secreto
-JWT_EXPIRATION_HOURS=24
+PORT=8080
+GIN_MODE=debug
 
-# Microsoft OAuth (opcional, para autenticación con Microsoft)
-MICROSOFT_CLIENT_ID=tu-client-id-de-azure
-MICROSOFT_TENANT_ID=common
+JWT_SECRET=tu_secreto_super_seguro_minimo_32_caracteres
+
+# Microsoft OAuth (opcional)
+MICROSOFT_CLIENT_ID=tu_client_id
+MICROSOFT_CLIENT_SECRET=tu_client_secret
+MICROSOFT_TENANT_ID=tu_tenant_id
 ```
 
-4. **Crear base de datos PostgreSQL**
-
-```sql
-CREATE DATABASE timeflow;
-```
-
-5. **Generar documentación Swagger**
-
-```bash
-swag init -g main.go -o ./docs
-# o con Make:
-make swagger
-```
-
-6. **Ejecutar la aplicación**
+### Ejecutar
 
 ```bash
 go run main.go
-# o con Make:
-make run
-# o para desarrollo (genera swagger y ejecuta):
-make dev
 ```
 
-## 🌐 Endpoints
+**URLs:**
 
-### Autenticación
+- API: http://localhost:8080/api/v1
+- Swagger: http://localhost:8080/swagger/index.html
 
-- `POST /api/v1/auth/login` - Login local (email/password)
-- `POST /api/v1/auth/microsoft` - Login con Microsoft OAuth
-- `POST /api/v1/auth/register` - Registro público de usuarios
-- `GET /api/v1/auth/me` - Obtener información del usuario actual
-- `POST /api/v1/auth/superadmin` - Crear SuperAdmin (solo SuperAdmin)
+## 📚 Documentación Completa
 
-### Áreas
+Ver [DOCUMENTATION.md](./DOCUMENTATION.md) para:
+
+- Arquitectura detallada
+- API Endpoints completos
+- Sistema de autenticación
+- Roles y permisos
+- Optimización de base de datos
+- Sistema de asignaciones
+- Guía de deployment
+- Testing y troubleshooting
 
 - `GET /api/v1/areas` - Listar áreas
 - `GET /api/v1/areas/:id` - Obtener área por ID

@@ -2,7 +2,8 @@
 import { useState, useEffect, createContext, useContext } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 1000;
+const TOAST_AUTO_CLOSE_DELAY = 5000;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -134,6 +135,11 @@ function toast({ ...props }) {
     },
   });
 
+  // Auto-cerrar después de TOAST_AUTO_CLOSE_DELAY
+  setTimeout(() => {
+    dismiss();
+  }, TOAST_AUTO_CLOSE_DELAY);
+
   return {
     id,
     dismiss,
@@ -157,8 +163,9 @@ function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
+    dismiss: (toastId) =>
+      dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
   };
 }
 
-export { useToast, toast }; 
+export { useToast, toast };
