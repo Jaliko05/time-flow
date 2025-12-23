@@ -26,7 +26,7 @@ export const projectsAPI = {
 
   /**
    * Create new project
-   * @param {object} data - {name, description}
+   * @param {object} data - {name, description, area_ids (array)}
    * @returns {Promise<object>}
    */
   create: async (data) => {
@@ -37,7 +37,7 @@ export const projectsAPI = {
   /**
    * Update project
    * @param {number} id
-   * @param {object} data - {name, description, is_active}
+   * @param {object} data - {name, description, is_active, area_ids (array)}
    * @returns {Promise<object>}
    */
   update: async (id, data) => {

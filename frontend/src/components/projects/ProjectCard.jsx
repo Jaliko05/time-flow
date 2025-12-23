@@ -54,6 +54,24 @@ export function ProjectCard({ project, onEdit, onDelete }) {
               {PROJECT_TYPES[project.project_type] || project.project_type}
             </span>
           )}
+          {/* Multi-Area Support */}
+          {project.areas && project.areas.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap">
+              {project.areas.slice(0, 2).map((area) => (
+                <span
+                  key={area.id}
+                  className="text-xs px-2 py-1 rounded-md bg-blue-100 text-blue-700"
+                >
+                  {area.name}
+                </span>
+              ))}
+              {project.areas.length > 2 && (
+                <span className="text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-600">
+                  +{project.areas.length - 2}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Barra de progreso */}

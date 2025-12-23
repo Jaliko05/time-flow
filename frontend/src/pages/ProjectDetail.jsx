@@ -16,10 +16,14 @@ import {
   Users,
   MessageSquare,
   ListTodo,
+  FileText,
+  AlertTriangle,
 } from "lucide-react";
 import TaskBoard from "../components/tasks/TaskBoard";
 import TaskFormDialog from "../components/tasks/TaskFormDialog";
 import CommentSection from "../components/tasks/CommentSection";
+import RequirementsList from "../components/requirements/RequirementsList";
+import IncidentsList from "../components/incidents/IncidentsList";
 import { useToast } from "@/hooks/use-toast";
 import { UserAvatar } from "@/components/common/UserAvatar";
 
@@ -293,10 +297,21 @@ export default function ProjectDetail() {
 
         {/* Tasks Kanban and Comments */}
         <Tabs defaultValue="tasks" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="tasks" className="flex items-center gap-2">
               <ListTodo className="h-4 w-4" />
               Tareas ({tasks.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="requirements"
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Requerimientos
+            </TabsTrigger>
+            <TabsTrigger value="incidents" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Incidentes
             </TabsTrigger>
             <TabsTrigger value="comments" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
@@ -322,6 +337,50 @@ export default function ProjectDetail() {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="requirements" className="mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                Requerimientos del Proyecto
+              </h3>
+              <Button onClick={() => navigate(`/projects/${id}/requirements`)}>
+                Ver Todos
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Gestiona los requerimientos del proyecto.
+              <span className="ml-2">
+                <Button
+                  variant="link"
+                  className="p-0 h-auto"
+                  onClick={() => navigate(`/projects/${id}/requirements`)}
+                >
+                  Ir a Requerimientos →
+                </Button>
+              </span>
+            </p>
+          </TabsContent>
+
+          <TabsContent value="incidents" className="mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Incidentes del Proyecto</h3>
+              <Button onClick={() => navigate(`/projects/${id}/incidents`)}>
+                Ver Todos
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Gestiona los incidentes reportados para este proyecto.
+              <span className="ml-2">
+                <Button
+                  variant="link"
+                  className="p-0 h-auto"
+                  onClick={() => navigate(`/projects/${id}/incidents`)}
+                >
+                  Ir a Incidentes →
+                </Button>
+              </span>
+            </p>
           </TabsContent>
 
           <TabsContent value="comments" className="mt-6">

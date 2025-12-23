@@ -4,11 +4,15 @@ import Dashboard from "./Dashboard";
 import Activities from "./Activities";
 import Projects from "./Projects";
 import ProjectDetail from "./ProjectDetail";
+import Requirements from "./Requirements";
+import Incidents from "./Incidents";
 import Settings from "./Settings";
 import Admin from "./Admin";
 import Login from "./Login";
 import Register from "./Register";
 import Calendar from "./Calendar";
+import SuperAdminDashboard from "./SuperAdminDashboard";
+import AdminDashboard from "./AdminDashboard";
 
 import {
   BrowserRouter as Router,
@@ -104,6 +108,28 @@ function PagesContent() {
           <ProtectedRoute>
             <Layout currentPageName="Projects">
               <ProjectDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Projects/:projectId/requirements"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <Requirements />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Projects/:projectId/incidents"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <Incidents />
             </Layout>
           </ProtectedRoute>
         }

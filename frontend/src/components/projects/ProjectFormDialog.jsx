@@ -38,7 +38,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { usersAPI } from "@/api/users";
+import { areasAPI } from "@/api/areas";
 import { UserBadge } from "@/components/common/UserAvatar";
+import AreaMultiSelect from "@/components/common/AreaMultiSelect";
 
 export default function ProjectFormDialog({
   project,
@@ -56,10 +58,18 @@ export default function ProjectFormDialog({
     queryFn: () => usersAPI.getAll(),
     enabled: open && (userRole === "admin" || userRole === "superadmin"),
   });
+
+  // Fetch areas for multi-area support (only for superadmin)
+  const { data: areas = [] } = useQuery({
+    queryKey: ["areas"],
+    queryFn: () => areasAPI.getAll(),
+    enabled: open && userRole === "superadmin",
+  });
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     project_type: "personal",
+    area_ids: [], // Array of area IDs for multi-area support
     assigned_user_ids: [], // Changed to array for multiple assignments
     start_date: null,
     due_date: null,
@@ -78,10 +88,14 @@ export default function ProjectFormDialog({
           .map((a) => a.user_id) ||
         (project.assigned_user_id ? [project.assigned_user_id] : []);
 
+      // Get area IDs from project areas
+      const areaIds = project.areas?.map((a) => a.id) || [];
+
       setFormData({
         name: project.name,
         description: project.description || "",
         project_type: project.project_type || "personal",
+        area_ids: areaIds,
         assigned_user_ids: assignedIds,
         start_date: project.start_date ? new Date(project.start_date) : null,
         due_date: project.due_date ? new Date(project.due_date) : null,
@@ -92,6 +106,7 @@ export default function ProjectFormDialog({
         name: "",
         description: "",
         project_type: "personal", // Default to personal, admin can change to "area"
+        area_ids: [],
         assigned_user_ids: [],
         start_date: null,
         due_date: null,
@@ -252,6 +267,25 @@ export default function ProjectFormDialog({
                     : "Proyecto de área - asigna múltiples usuarios al equipo"}
                 </p>
               </div>
+
+              {/* Multi-Area Selector (SuperAdmin only) */}
+              {userRole === "superadmin" &&
+                formData.project_type === "area" && (
+                  <div className="space-y-2">
+                    <Label>Áreas del Proyecto</Label>
+                    <AreaMultiSelect
+                      areas={areas}
+                      selectedAreaIds={formData.area_ids}
+                      onChange={(areaIds) =>
+                        setFormData((prev) => ({ ...prev, area_ids: areaIds }))
+                      }
+                      placeholder="Seleccionar áreas..."
+                    />
+                    <p className="text-xs text-gray-500">
+                      SuperAdmin puede asignar el proyecto a múltiples áreas
+                    </p>
+                  </div>
+                )}
 
               {formData.project_type === "area" && (
                 <div className="space-y-3">

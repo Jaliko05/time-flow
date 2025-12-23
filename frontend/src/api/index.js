@@ -9,6 +9,12 @@ export { activitiesAPI } from './activities';
 export { statsAPI } from './stats';
 export { default as apiClient } from './client';
 
+// NEW: Export new API modules (Phase 2 & 4)
+export * from './requirements';
+export * from './incidents';
+export * from './processes';
+export * from './dashboard';
+
 // Backward compatibility - simulate Base44 structure
 import { authAPI } from './auth';
 import { activitiesAPI } from './activities';
