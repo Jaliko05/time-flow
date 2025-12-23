@@ -27,7 +27,7 @@ func GetProjects(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	query := config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area")
+	query := config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area").Preload("Areas")
 
 	// Apply filters based on role
 	role := userRole.(models.Role)
@@ -92,7 +92,7 @@ func GetProject(c *gin.Context) {
 	userAreaID, _ := c.Get("user_area_id")
 
 	var project models.Project
-	query := config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area")
+	query := config.DB.Preload("Creator").Preload("AssignedUsers").Preload("ProjectAssignments.User").Preload("Area").Preload("Areas")
 
 	if err := query.First(&project, id).Error; err != nil {
 		utils.ErrorResponse(c, 404, "Project not found")
@@ -128,7 +128,7 @@ func GetProject(c *gin.Context) {
 
 // CreateProject godoc
 // @Summary Create new project
-// @Description Create a new project. Users and Admins can create personal projects. Admins can also create area projects and assign them to users in their area.
+// @Description Create a new project. Only Admins and SuperAdmins can create projects.
 // @Tags projects
 // @Accept json
 // @Produce json
@@ -151,6 +151,12 @@ func CreateProject(c *gin.Context) {
 	}
 
 	role := userRole.(models.Role)
+
+	// NUEVO: Solo Admin y SuperAdmin pueden crear proyectos
+	if role == models.RoleUser {
+		utils.ErrorResponse(c, 403, "Only admins and super admins can create projects")
+		return
+	}
 
 	// Validation for project type
 	if req.ProjectType == models.ProjectTypeArea {
@@ -276,6 +282,31 @@ func CreateProject(c *gin.Context) {
 	if err := config.DB.Create(&project).Error; err != nil {
 		utils.ErrorResponse(c, 500, "Failed to create project")
 		return
+	}
+
+	// NUEVO: Asignar múltiples áreas si se proporcionaron
+	if len(req.AreaIDs) > 0 {
+		for _, areaID := range req.AreaIDs {
+			// Verificar que el área existe
+			var area models.Area
+			if err := config.DB.First(&area, areaID).Error; err != nil {
+				config.DB.Delete(&project) // Rollback
+				utils.ErrorResponse(c, 404, "Area not found: "+strconv.FormatUint(uint64(areaID), 10))
+				return
+			}
+			// Asociar área al proyecto
+			if err := config.DB.Model(&project).Association("Areas").Append(&area); err != nil {
+				config.DB.Delete(&project) // Rollback
+				utils.ErrorResponse(c, 500, "Failed to associate areas")
+				return
+			}
+		}
+	} else if projectAreaID != nil {
+		// Si no se proporcionaron AreaIDs pero hay projectAreaID (deprecated), asociar esa área
+		var area models.Area
+		if err := config.DB.First(&area, *projectAreaID).Error; err == nil {
+			config.DB.Model(&project).Association("Areas").Append(&area)
+		}
 	}
 
 	// Create assignments for all validated users

@@ -58,3 +58,69 @@ func RequireAreaAccess() gin.HandlerFunc {
 		c.Abort()
 	}
 }
+
+// CanCreateProject middleware checks if user can create projects
+// Only Admin and SuperAdmin can create projects
+func CanCreateProject() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole, exists := c.Get("user_role")
+		if !exists {
+			utils.ErrorResponse(c, 403, "User role not found")
+			c.Abort()
+			return
+		}
+
+		role := userRole.(models.Role)
+		if role == models.RoleAdmin || role == models.RoleSuperAdmin {
+			c.Next()
+			return
+		}
+
+		utils.ErrorResponse(c, 403, "Only admins and super admins can create projects")
+		c.Abort()
+	}
+}
+
+// CanManageRequirements middleware checks if user can manage requirements
+// Only Admin and SuperAdmin can manage requirements
+func CanManageRequirements() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole, exists := c.Get("user_role")
+		if !exists {
+			utils.ErrorResponse(c, 403, "User role not found")
+			c.Abort()
+			return
+		}
+
+		role := userRole.(models.Role)
+		if role == models.RoleAdmin || role == models.RoleSuperAdmin {
+			c.Next()
+			return
+		}
+
+		utils.ErrorResponse(c, 403, "Only admins can manage requirements")
+		c.Abort()
+	}
+}
+
+// CanManageProcesses middleware checks if user can manage processes
+// Only Admin and SuperAdmin can create/update/delete processes
+func CanManageProcesses() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole, exists := c.Get("user_role")
+		if !exists {
+			utils.ErrorResponse(c, 403, "User role not found")
+			c.Abort()
+			return
+		}
+
+		role := userRole.(models.Role)
+		if role == models.RoleAdmin || role == models.RoleSuperAdmin {
+			c.Next()
+			return
+		}
+
+		utils.ErrorResponse(c, 403, "Only admins can manage processes")
+		c.Abort()
+	}
+}

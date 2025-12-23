@@ -76,6 +76,7 @@ type CreateProjectRequest struct {
 	ProjectType     ProjectType     `json:"project_type" binding:"required,oneof=personal area"` // personal o area
 	AssignedUserID  *uint           `json:"assigned_user_id"`                                    // Deprecated: single user (for backward compatibility)
 	AssignedUserIDs []uint          `json:"assigned_user_ids"`                                   // Multiple users to assign
+	AreaIDs         []uint          `json:"area_ids"`                                            // Multiple areas for multi-area projects
 	Priority        ProjectPriority `json:"priority" binding:"omitempty,oneof=low medium high critical"`
 	EstimatedHours  float64         `json:"estimated_hours" binding:"omitempty,gte=0"` // Horas estimadas (opcional)
 	StartDate       *string         `json:"start_date"`                                // Fecha de inicio en formato YYYY-MM-DD (opcional)

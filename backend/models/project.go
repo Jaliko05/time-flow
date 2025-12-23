@@ -58,11 +58,22 @@ type Project struct {
 	DeletedAt         gorm.DeletedAt  `gorm:"index" json:"-" swaggerignore:"true"`
 
 	// Relations
-	Creator            User                `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
-	Area               *Area               `gorm:"foreignKey:AreaID" json:"area,omitempty" swaggerignore:"true"`
-	Tasks              []Task              `gorm:"foreignKey:ProjectID" json:"tasks,omitempty" swaggerignore:"true"`
-	Activities         []Activity          `gorm:"foreignKey:ProjectID" json:"activities,omitempty" swaggerignore:"true"`
-	Comments           []Comment           `gorm:"foreignKey:ProjectID" json:"comments,omitempty" swaggerignore:"true"`
+	Creator User `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
+
+	// DEPRECATED: AreaID se mantiene por compatibilidad pero se usará Areas (many2many)
+	Area *Area `gorm:"foreignKey:AreaID" json:"area,omitempty" swaggerignore:"true"`
+
+	// NUEVO: Relación many-to-many con áreas (un proyecto puede pertenecer a múltiples áreas)
+	Areas []Area `gorm:"many2many:project_areas;" json:"areas,omitempty" swaggerignore:"true"`
+
+	Tasks      []Task     `gorm:"foreignKey:ProjectID" json:"tasks,omitempty" swaggerignore:"true"`
+	Activities []Activity `gorm:"foreignKey:ProjectID" json:"activities,omitempty" swaggerignore:"true"`
+	Comments   []Comment  `gorm:"foreignKey:ProjectID" json:"comments,omitempty" swaggerignore:"true"`
+
+	// NUEVO: Requerimientos e Incidentes
+	Requirements []Requirement `gorm:"foreignKey:ProjectID" json:"requirements,omitempty" swaggerignore:"true"`
+	Incidents    []Incident    `gorm:"foreignKey:ProjectID" json:"incidents,omitempty" swaggerignore:"true"`
+
 	AssignedUsers      []User              `gorm:"many2many:project_assignments;joinForeignKey:ProjectID;joinReferences:UserID" json:"assigned_users,omitempty" swaggerignore:"true"`
 	ProjectAssignments []ProjectAssignment `gorm:"foreignKey:ProjectID" json:"project_assignments,omitempty" swaggerignore:"true"`
 }

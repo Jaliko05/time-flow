@@ -48,21 +48,41 @@ func ConnectDatabase() {
 
 	log.Println("Database connected successfully")
 
-	// Auto migrate schemas
+	// Auto migrate schemas - FASE 1: Tablas principales sin Process
 	if err := DB.AutoMigrate(
+		// Tablas base (sin dependencias)
 		&models.Area{},
 		&models.User{},
+
+		// Proyectos y relaciones básicas
 		&models.Project{},
+		&models.Activity{}, // Crear primero
 		&models.Task{},
-		&models.Activity{},
 		&models.Comment{},
 		&models.ProjectAssignment{},
 		&models.TaskAssignment{},
+
+		// Nueva estructura - Requerimientos e Incidentes
+		&models.Requirement{}, // Depende de Project
+		&models.Incident{},    // Depende de Project
 	); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+		log.Fatalf("Failed to migrate database (Phase 1): %v", err)
 	}
 
-	log.Println("Database schema migrations completed")
+	log.Println("Database schema migrations (Phase 1) completed")
+
+	// Auto migrate schemas - FASE 2: Process y ProcessActivity (ahora activities ya existe)
+	if err := DB.AutoMigrate(
+		&models.Process{},         // Ahora Activity ya existe
+		&models.ProcessActivity{}, // Depende de Process
+	); err != nil {
+		log.Fatalf("Failed to migrate database (Phase 2): %v", err)
+	}
+
+	log.Println("Database schema migrations (Phase 2) completed")
+
+	// Migrate existing data to new structure
+	migrateExistingData()
 
 	// Run custom migrations (indexes, constraints, etc.)
 	runCustomMigrations()
@@ -160,6 +180,113 @@ func runCustomMigrations() {
 	}
 
 	log.Printf("Custom migrations completed: %d/%d indexes applied", successCount, len(indexMigrations))
+
+	// Add new indexes for new structure
+	newIndexMigrations := []struct {
+		name      string
+		tableName string
+		sql       string
+	}{
+		{
+			name:      "idx_requirements_project",
+			tableName: "requirements",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_requirements_project ON requirements(project_id)",
+		},
+		{
+			name:      "idx_requirements_status",
+			tableName: "requirements",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_requirements_status ON requirements(status)",
+		},
+		{
+			name:      "idx_incidents_project",
+			tableName: "incidents",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_incidents_project ON incidents(project_id)",
+		},
+		{
+			name:      "idx_incidents_severity",
+			tableName: "incidents",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity)",
+		},
+		{
+			name:      "idx_processes_requirement",
+			tableName: "processes",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_processes_requirement ON processes(requirement_id)",
+		},
+		{
+			name:      "idx_processes_incident",
+			tableName: "processes",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_processes_incident ON processes(incident_id)",
+		},
+		{
+			name:      "idx_process_activities_process",
+			tableName: "process_activities",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_process_activities_process ON process_activities(process_id)",
+		},
+		{
+			name:      "idx_process_activities_depends_on",
+			tableName: "process_activities",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_process_activities_depends_on ON process_activities(depends_on_id)",
+		},
+		{
+			name:      "idx_activities_parent",
+			tableName: "activities",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_activities_parent ON activities(parent_activity_id)",
+		},
+		{
+			name:      "idx_activities_process",
+			tableName: "activities",
+			sql:       "CREATE INDEX IF NOT EXISTS idx_activities_process ON activities(process_id)",
+		},
+	}
+
+	// Apply new indexes
+	for _, migration := range newIndexMigrations {
+		if err := DB.Exec(migration.sql).Error; err != nil {
+			log.Printf("Info: Index %s might already exist or table not created yet", migration.name)
+		} else {
+			log.Printf("✓ New index created/verified: %s on %s", migration.name, migration.tableName)
+		}
+	}
+}
+
+// migrateExistingData migrates existing data to new structure
+func migrateExistingData() {
+	log.Println("Migrating existing data to new structure...")
+
+	// Migrate projects to project_areas (many-to-many)
+	var projectsWithArea []models.Project
+	if err := DB.Where("area_id IS NOT NULL").Find(&projectsWithArea).Error; err != nil {
+		log.Printf("Warning: Could not fetch projects for migration: %v", err)
+		return
+	}
+
+	migratedCount := 0
+	for _, project := range projectsWithArea {
+		// Check if already migrated
+		var area models.Area
+		if err := DB.Model(&project).Association("Areas").Find(&area); err == nil && area.ID > 0 {
+			// Already has area in many-to-many, skip
+			continue
+		}
+
+		// Add the area to the many-to-many relationship
+		if project.AreaID != nil {
+			var area models.Area
+			if err := DB.First(&area, *project.AreaID).Error; err == nil {
+				if err := DB.Model(&project).Association("Areas").Append(&area); err != nil {
+					log.Printf("Warning: Failed to migrate project %d to project_areas: %v", project.ID, err)
+				} else {
+					migratedCount++
+				}
+			}
+		}
+	}
+
+	if migratedCount > 0 {
+		log.Printf("✓ Migrated %d projects to project_areas", migratedCount)
+	} else {
+		log.Println("No projects to migrate or already migrated")
+	}
 }
 
 // createDefaultSuperAdmin creates a default super admin user
