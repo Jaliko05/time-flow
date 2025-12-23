@@ -45,6 +45,14 @@ func SetupRoutes(router *gin.Engine) {
 			protected.GET("/auth/me", handlers.Me)
 			protected.POST("/auth/superadmin", middleware.RequireRole(models.RoleSuperAdmin), handlers.CreateSuperAdmin)
 
+			// NEW: Dashboard routes
+			dashboard := protected.Group("/dashboard")
+			{
+				dashboard.GET("/superadmin", middleware.RequireRole(models.RoleSuperAdmin), handlers.GetSuperAdminDashboard)
+				dashboard.GET("/admin", middleware.RequireRole(models.RoleAdmin), handlers.GetAdminDashboard)
+				dashboard.GET("/user", middleware.RequireRole(models.RoleUser), handlers.GetUserDashboard)
+			}
+
 			// Area routes (management - SuperAdmin only)
 			areas := protected.Group("/areas")
 			{
