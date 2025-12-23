@@ -13,6 +13,8 @@ import {
   Sun,
   Menu,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,9 +29,16 @@ import {
   SidebarFooter,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -107,7 +116,13 @@ export default function Layout({ children, currentPageName }) {
   console.log("Layout - Filtered nav items:", filteredNav.length);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      defaultOpen={true}
+      style={{
+        "--sidebar-width": "16rem",
+        "--sidebar-width-icon": "4rem",
+      }}
+    >
       <style>{`
         :root {
           --background: 0 0% 98%;
@@ -143,95 +158,14 @@ export default function Layout({ children, currentPageName }) {
       `}</style>
 
       <div className="min-h-screen flex w-full bg-background transition-colors duration-300">
-        <Sidebar className="border-r border-border">
-          <SidebarHeader className="border-b border-border p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-                <ListChecks className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Sistemas gyg</h2>
-                <p className="text-xs text-muted-foreground">Gestión Laboral</p>
-              </div>
-            </div>
-          </SidebarHeader>
-
-          <SidebarContent className="p-2">
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2 py-2">
-                Navegación
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {filteredNav.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        className={`hover:bg-accent hover:text-accent-foreground transition-colors duration-200 rounded-lg mb-1 ${
-                          location.pathname === item.url
-                            ? "bg-accent text-accent-foreground font-medium"
-                            : ""
-                        }`}
-                      >
-                        <Link
-                          to={item.url}
-                          className="flex items-center gap-3 px-3 py-2"
-                        >
-                          <item.icon className="w-4 h-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-
-          <SidebarFooter className="border-t border-border p-4 space-y-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleDarkMode}
-              className="w-full justify-start gap-2"
-            >
-              {darkMode ? (
-                <Sun className="w-4 h-4" />
-              ) : (
-                <Moon className="w-4 h-4" />
-              )}
-              {darkMode ? "Modo Claro" : "Modo Oscuro"}
-            </Button>
-
-            {user && (
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-muted">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {user.full_name?.[0]?.toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-foreground truncate">
-                    {user.full_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user.email}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-            >
-              <LogOut className="w-4 h-4" />
-              Cerrar Sesión
-            </Button>
-          </SidebarFooter>
-        </Sidebar>
+        <SidebarComponent
+          user={user}
+          logout={logout}
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
+          navigationItems={filteredNav}
+          location={location}
+        />
 
         <main className="flex-1 flex flex-col">
           <header className="bg-card border-b border-border px-6 py-4 md:hidden">
@@ -245,9 +179,185 @@ export default function Layout({ children, currentPageName }) {
             </div>
           </header>
 
-          <div className="flex-1 overflow-auto bg-background">{children}</div>
+          <div className="flex-1 overflow-auto bg-background p-6 md:p-8">
+            {children}
+          </div>
         </main>
       </div>
     </SidebarProvider>
+  );
+}
+
+function SidebarComponent({
+  user,
+  logout,
+  darkMode,
+  toggleDarkMode,
+  navigationItems,
+  location,
+}) {
+  const { open, toggleSidebar } = useSidebar();
+
+  return (
+    <Sidebar collapsible="icon" className="border-r border-border">
+      <SidebarHeader className="border-b border-border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
+              <ListChecks className="w-6 h-6 text-white" />
+            </div>
+            {open && (
+              <div className="min-w-0">
+                <h2 className="font-bold text-foreground truncate">
+                  Sistemas gyg
+                </h2>
+                <p className="text-xs text-muted-foreground truncate">
+                  Gestión Laboral
+                </p>
+              </div>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="hidden md:flex flex-shrink-0 h-8 w-8"
+          >
+            {open ? (
+              <ChevronLeft className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent className="p-2">
+        <SidebarGroup>
+          {open && (
+            <SidebarGroupLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2 py-2">
+              Navegación
+            </SidebarGroupLabel>
+          )}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <TooltipProvider delayDuration={0}>
+                {navigationItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton
+                          asChild
+                          className={`hover:bg-accent hover:text-accent-foreground transition-colors duration-200 rounded-lg mb-1 ${
+                            location.pathname === item.url
+                              ? "bg-accent text-accent-foreground font-medium"
+                              : ""
+                          } ${!open ? "justify-center" : ""}`}
+                        >
+                          <Link
+                            to={item.url}
+                            className={`flex items-center gap-3 px-3 py-2 ${
+                              !open ? "justify-center" : ""
+                            }`}
+                          >
+                            <item.icon className="w-4 h-4 flex-shrink-0" />
+                            {open && <span>{item.title}</span>}
+                          </Link>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      {!open && (
+                        <TooltipContent side="right">
+                          <p>{item.title}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </SidebarMenuItem>
+                ))}
+              </TooltipProvider>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-border p-4 space-y-3">
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleDarkMode}
+                className={`w-full ${
+                  open ? "justify-start" : "justify-center"
+                } gap-2`}
+              >
+                {darkMode ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+                {open && (darkMode ? "Modo Claro" : "Modo Oscuro")}
+              </Button>
+            </TooltipTrigger>
+            {!open && (
+              <TooltipContent side="right">
+                <p>{darkMode ? "Modo Claro" : "Modo Oscuro"}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+
+        {user && open && (
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-muted">
+            <Avatar className="w-8 h-8 flex-shrink-0">
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {user.full_name?.[0]?.toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm text-foreground truncate">
+                {user.full_name}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user.email}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {user && !open && (
+          <div className="flex justify-center">
+            <Avatar className="w-8 h-8">
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {user.full_name?.[0]?.toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        )}
+
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className={`w-full ${
+                  open ? "justify-start" : "justify-center"
+                } gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950`}
+              >
+                <LogOut className="w-4 h-4" />
+                {open && "Cerrar Sesión"}
+              </Button>
+            </TooltipTrigger>
+            {!open && (
+              <TooltipContent side="right">
+                <p>Cerrar Sesión</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
