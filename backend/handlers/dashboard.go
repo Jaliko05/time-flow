@@ -68,12 +68,17 @@ func GetAdminDashboard(c *gin.Context) {
 
 	// Obtener el área del usuario
 	userAreaID, exists := c.Get("user_area_id")
-	if !exists {
+	if !exists || userAreaID == nil {
 		utils.ErrorResponse(c, 400, "User area not found")
 		return
 	}
 
-	areaID := userAreaID.(uint)
+	areaIDPtr, ok := userAreaID.(*uint)
+	if !ok || areaIDPtr == nil {
+		utils.ErrorResponse(c, 400, "Invalid user area")
+		return
+	}
+	areaID := *areaIDPtr
 
 	// Obtener métricas del servicio
 	metricsService := services.NewMetricsService()

@@ -151,6 +151,16 @@ export const createProcessActivity = async (processId, data) => {
 };
 
 /**
+ * Get a single process activity by ID
+ * @param {number} activityId - Activity ID
+ * @returns {Promise} Activity data
+ */
+export const getProcessActivity = async (activityId) => {
+  const response = await apiClient.get(`/process-activities/${activityId}`);
+  return response.data;
+};
+
+/**
  * Update a process activity
  * @param {number} activityId - Activity ID
  * @param {Object} data - Updated activity data
@@ -209,4 +219,25 @@ export const getUserWorkload = async (userId) => {
 export const getUserProcesses = async (userId) => {
   const response = await apiClient.get(`/users/${userId}/processes`);
   return response.data;
+};
+
+// API object for hooks compatibility
+export const processesApi = {
+  getAll: getProcesses,
+  getById: getProcess,
+  create: createProcess,
+  update: updateProcess,
+  delete: deleteProcess,
+  assignUser: assignUserToProcess,
+  removeUser: removeUserFromProcess,
+  getAssignments: getProcessAssignments,
+  getActivities: getProcessActivities,
+  createActivity: createProcessActivity,
+  getActivity: getProcessActivity,
+  updateActivity: updateProcessActivity,
+  validateDependencies: validateActivityDependencies,
+  getDependencyChain: getActivityDependencyChain,
+  getBlockedActivities: getBlockedActivities,
+  getUserWorkload: getUserWorkload,
+  getUserProcesses: getUserProcesses,
 };

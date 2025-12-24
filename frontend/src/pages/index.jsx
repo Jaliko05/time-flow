@@ -4,6 +4,8 @@ import Dashboard from "./Dashboard";
 import Activities from "./Activities";
 import Projects from "./Projects";
 import ProjectDetail from "./ProjectDetail";
+import ProcessDetail from "./ProcessDetail";
+import ProcessActivityDetail from "./ProcessActivityDetail";
 import Requirements from "./Requirements";
 import Incidents from "./Incidents";
 import Settings from "./Settings";
@@ -130,6 +132,28 @@ function PagesContent() {
           <ProtectedRoute>
             <Layout currentPageName="Projects">
               <Incidents />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/process/:processId"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <ProcessDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/process-activity/:activityId"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <ProcessActivityDetail />
             </Layout>
           </ProtectedRoute>
         }

@@ -121,11 +121,7 @@ func runCustomMigrations() {
 			tableName: "projects",
 			sql:       "CREATE INDEX IF NOT EXISTS idx_projects_created_by ON projects(created_by)",
 		},
-		{
-			name:      "idx_projects_assigned_user_id",
-			tableName: "projects",
-			sql:       "CREATE INDEX IF NOT EXISTS idx_projects_assigned_user_id ON projects(assigned_user_id)",
-		},
+		// NOTE: assigned_user_id removed - now using project_assignments table
 		{
 			name:      "idx_activities_user_id",
 			tableName: "activities",

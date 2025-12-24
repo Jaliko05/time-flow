@@ -81,3 +81,14 @@ export const createProcessForIncident = async (incidentId, data) => {
   const response = await apiClient.post(`/incidents/${incidentId}/processes`, data);
   return response.data;
 };
+
+// API object for hooks compatibility
+export const incidentsApi = {
+  getAll: getProjectIncidents,
+  getById: getIncident,
+  create: createIncident,
+  update: updateIncident,
+  delete: deleteIncident,
+  resolve: resolveIncident,
+  createProcess: createProcessForIncident,
+};

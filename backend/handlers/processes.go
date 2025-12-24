@@ -100,9 +100,12 @@ func CreateProcessForRequirement(c *gin.Context) {
 	// Admin solo puede crear procesos para requerimientos de su área
 	if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && requirement.Project.AreaID != nil && *requirement.Project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only create processes for requirements in your area")
-			return
+		if userAreaID != nil && requirement.Project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *requirement.Project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only create processes for requirements in your area")
+				return
+			}
 		}
 	}
 
@@ -204,9 +207,12 @@ func CreateProcessForIncident(c *gin.Context) {
 		}
 	} else if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && incident.Project.AreaID != nil && *incident.Project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only create processes for incidents in your area")
-			return
+		if userAreaID != nil && incident.Project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *incident.Project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only create processes for incidents in your area")
+				return
+			}
 		}
 	}
 

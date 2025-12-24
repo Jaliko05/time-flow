@@ -69,3 +69,13 @@ export const createProcessForRequirement = async (requirementId, data) => {
   const response = await apiClient.post(`/requirements/${requirementId}/processes`, data);
   return response.data;
 };
+
+// API object for hooks compatibility
+export const requirementsApi = {
+  getAll: getProjectRequirements,
+  getById: getRequirement,
+  create: createRequirement,
+  update: updateRequirement,
+  delete: deleteRequirement,
+  createProcess: createProcessForRequirement,
+};

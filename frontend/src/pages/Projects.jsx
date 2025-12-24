@@ -73,7 +73,8 @@ export default function Projects() {
           title={getPageTitle()}
           subtitle={getPageSubtitle()}
           actions={
-            user?.role !== "superadmin" && (
+            // Solo Admin y SuperAdmin pueden crear proyectos
+            (user?.role === "admin" || user?.role === "superadmin") && (
               <Button onClick={handleNewProject} className="gap-2">
                 <Plus className="w-4 h-4" />
                 Nuevo Proyecto

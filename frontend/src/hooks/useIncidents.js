@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { incidentsApi } from '@/api/incidents';
 import { toast } from '@/hooks/use-toast';
 
-export function useIncidents(filters = {}) {
+export function useIncidents(projectId) {
   return useQuery({
-    queryKey: ['incidents', filters],
-    queryFn: () => incidentsApi.getAll(filters),
+    queryKey: ['incidents', projectId],
+    queryFn: () => incidentsApi.getAll(projectId),
+    enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

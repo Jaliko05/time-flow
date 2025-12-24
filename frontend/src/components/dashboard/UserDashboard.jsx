@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { ListTodo, CalendarCheck, Plus } from "lucide-react";
-import { Button } from "../ui/button";
+import { ListTodo, CalendarCheck } from "lucide-react";
 import { PageHeader } from "../common/PageHeader";
 import { EmptyState } from "../common/EmptyState";
 import { ActiveProjectsList } from "./ActiveProjectsList";
 import { useUserProjects } from "@/hooks/useProjects";
 import ProjectKanban from "../projects/ProjectKanban";
-import ProjectFormDialog from "../projects/ProjectFormDialog";
 import QuickActivityForm from "./QuickActivityForm";
 import TodayActivities from "./TodayActivities";
 import DailyProgressBar from "./DailyProgressBar";
@@ -18,15 +16,9 @@ import { format } from "date-fns";
 
 export default function UserDashboard({ user }) {
   const [activeTab, setActiveTab] = useState("activities");
-  const [showProjectDialog, setShowProjectDialog] = useState(false);
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const {
-    projects,
-    isLoading: loadingProjects,
-    createProject,
-    isCreating,
-  } = useUserProjects(user);
+  const { projects, isLoading: loadingProjects } = useUserProjects(user);
 
   // Obtener actividades del día para calcular horas
   const { data: todayActivities = [] } = useQuery({
@@ -43,20 +35,6 @@ export default function UserDashboard({ user }) {
 
   // Meta diaria (puedes ajustar esto según tus necesidades, por defecto 8 horas)
   const dailyGoal = 8;
-
-  const handleCreateProject = (data) => {
-    createProject(
-      {
-        ...data,
-        project_type: "personal",
-        creator_id: user.id,
-        area_id: user.area_id,
-      },
-      {
-        onSuccess: () => setShowProjectDialog(false),
-      }
-    );
-  };
 
   // Todos los proyectos que puede ver el usuario
   const userProjects = projects;
@@ -144,13 +122,9 @@ export default function UserDashboard({ user }) {
             <div>
               <h2 className="text-xl font-semibold">Mis Proyectos</h2>
               <p className="text-sm text-gray-600">
-                Proyectos personales y asignados por tu administrador
+                Proyectos asignados por tu administrador
               </p>
             </div>
-            <Button onClick={() => setShowProjectDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Proyecto Personal
-            </Button>
           </div>
 
           {projects.length === 0 ? (
@@ -158,8 +132,8 @@ export default function UserDashboard({ user }) {
               <CardContent className="pt-6">
                 <EmptyState
                   icon={<ListTodo className="h-12 w-12" />}
-                  title="No tienes proyectos aún"
-                  description="Crea un proyecto personal o espera a que tu administrador te asigne uno"
+                  title="No tienes proyectos asignados"
+                  description="Tu administrador te asignará proyectos cuando sea necesario"
                 />
               </CardContent>
             </Card>
@@ -168,13 +142,6 @@ export default function UserDashboard({ user }) {
           )}
         </TabsContent>
       </Tabs>
-
-      <ProjectFormDialog
-        open={showProjectDialog}
-        onOpenChange={setShowProjectDialog}
-        onSubmit={handleCreateProject}
-        isLoading={isCreating}
-      />
     </div>
   );
 }

@@ -22,9 +22,9 @@ import (
 // @Success 200 {object} utils.Response{data=[]models.Requirement}
 // @Failure 400 {object} utils.Response
 // @Failure 403 {object} utils.Response
-// @Router /projects/{project_id}/requirements [get]
+// @Router /projects/{id}/requirements [get]
 func GetProjectRequirements(c *gin.Context) {
-	projectIDStr := c.Param("project_id")
+	projectIDStr := c.Param("id")
 	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid project ID")
@@ -154,9 +154,12 @@ func CreateRequirement(c *gin.Context) {
 	// Admin solo puede crear en proyectos de su área
 	if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && project.AreaID != nil && *project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only create requirements for projects in your area")
-			return
+		if userAreaID != nil && project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only create requirements for projects in your area")
+				return
+			}
 		}
 	}
 
@@ -239,9 +242,12 @@ func UpdateRequirement(c *gin.Context) {
 	// Admin solo puede actualizar requerimientos de proyectos de su área
 	if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && requirement.Project.AreaID != nil && *requirement.Project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only update requirements for projects in your area")
-			return
+		if userAreaID != nil && requirement.Project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *requirement.Project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only update requirements for projects in your area")
+				return
+			}
 		}
 	}
 
@@ -307,9 +313,12 @@ func DeleteRequirement(c *gin.Context) {
 	// Admin solo puede eliminar requerimientos de proyectos de su área
 	if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && requirement.Project.AreaID != nil && *requirement.Project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only delete requirements for projects in your area")
-			return
+		if userAreaID != nil && requirement.Project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *requirement.Project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only delete requirements for projects in your area")
+				return
+			}
 		}
 	}
 

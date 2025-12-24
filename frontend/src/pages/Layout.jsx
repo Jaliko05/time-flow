@@ -39,6 +39,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import NotificationBell from "@/components/common/NotificationBell";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -168,14 +169,29 @@ export default function Layout({ children, currentPageName }) {
         />
 
         <main className="flex-1 flex flex-col">
-          <header className="bg-card border-b border-border px-6 py-4 md:hidden">
+          <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <SidebarTrigger className="hover:bg-accent p-2 rounded-lg transition-colors duration-200">
+              <SidebarTrigger className="hover:bg-accent p-2 rounded-lg transition-colors duration-200 md:hidden">
                 <Menu className="w-5 h-5" />
               </SidebarTrigger>
-              <h1 className="text-xl font-semibold text-foreground">
+              <h1 className="text-xl font-semibold text-foreground md:hidden">
                 TimeTracker
               </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleDarkMode}
+                className="h-9 w-9"
+              >
+                {darkMode ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </Button>
             </div>
           </header>
 

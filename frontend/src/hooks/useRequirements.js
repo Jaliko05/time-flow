@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { requirementsApi } from '@/api/requirements';
 import { toast } from '@/hooks/use-toast';
 
-export function useRequirements(filters = {}) {
+export function useRequirements(projectId) {
   return useQuery({
-    queryKey: ['requirements', filters],
-    queryFn: () => requirementsApi.getAll(filters),
+    queryKey: ['requirements', projectId],
+    queryFn: () => requirementsApi.getAll(projectId),
+    enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

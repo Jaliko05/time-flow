@@ -82,17 +82,17 @@ func SetupRoutes(router *gin.Engine) {
 			projects := protected.Group("/projects")
 			{
 				projects.GET("", handlers.GetProjects)
-				projects.GET("/:id", handlers.GetProject)
 				projects.POST("", middleware.RequireRole(models.RoleSuperAdmin, models.RoleAdmin), handlers.CreateProject)
+
+				// NEW: Requirements and Incidents endpoints (MUST be before /:id routes)
+				projects.GET("/:id/requirements", handlers.GetProjectRequirements)
+				projects.GET("/:id/incidents", handlers.GetProjectIncidents)
+
+				// Individual project routes (MUST be after nested routes)
+				projects.GET("/:id", handlers.GetProject)
 				projects.PUT("/:id", handlers.UpdateProject)
 				projects.PATCH("/:id/status", handlers.UpdateProjectStatus)
 				projects.DELETE("/:id", handlers.DeleteProject)
-
-				// NEW: Requirements endpoints
-				projects.GET("/:project_id/requirements", handlers.GetProjectRequirements)
-
-				// NEW: Incidents endpoints
-				projects.GET("/:project_id/incidents", handlers.GetProjectIncidents)
 			}
 
 			// NEW: Requirements routes
@@ -123,16 +123,17 @@ func SetupRoutes(router *gin.Engine) {
 			// NEW: Processes routes
 			processes := protected.Group("/processes")
 			{
+				// Nested routes MUST come before /:id routes
+				processes.POST("/:id/assign", middleware.CanManageProcesses(), handlers.AssignUserToProcess)
+				processes.DELETE("/:id/unassign/:user_id", middleware.CanManageProcesses(), handlers.RemoveUserFromProcess)
+				processes.GET("/:id/assignments", handlers.GetProcessAssignments)
+				processes.GET("/:id/activities", handlers.GetProcessActivities)
+				processes.POST("/:id/activities", middleware.CanManageProcesses(), handlers.CreateProcessActivity)
+
+				// Individual process routes (MUST be after nested routes)
 				processes.GET("/:id", handlers.GetProcess)
 				processes.PUT("/:id", middleware.CanManageProcesses(), handlers.UpdateProcess)
 				processes.DELETE("/:id", middleware.CanManageProcesses(), handlers.DeleteProcess)
-				processes.POST("/:process_id/assign", middleware.CanManageProcesses(), handlers.AssignUserToProcess)
-				processes.GET("/:id/assignments", handlers.GetProcessAssignments)
-				processes.DELETE("/:process_id/unassign/:user_id", middleware.CanManageProcesses(), handlers.RemoveUserFromProcess)
-
-				// Process activities
-				processes.GET("/:process_id/activities", handlers.GetProcessActivities)
-				processes.POST("/:process_id/activities", middleware.CanManageProcesses(), handlers.CreateProcessActivity)
 			}
 
 			// NEW: Process Activities routes

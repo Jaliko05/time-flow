@@ -16,15 +16,15 @@ import (
 // @Tags incidents
 // @Produce json
 // @Security BearerAuth
-// @Param project_id path int true "Project ID"
+// @Param id path int true "Project ID"
 // @Param status query string false "Filter by status"
 // @Param severity query string false "Filter by severity"
 // @Success 200 {object} utils.Response{data=[]models.Incident}
 // @Failure 400 {object} utils.Response
 // @Failure 403 {object} utils.Response
-// @Router /projects/{project_id}/incidents [get]
+// @Router /projects/{id}/incidents [get]
 func GetProjectIncidents(c *gin.Context) {
-	projectIDStr := c.Param("project_id")
+	projectIDStr := c.Param("id")
 	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid project ID")
@@ -162,9 +162,12 @@ func CreateIncident(c *gin.Context) {
 		}
 	} else if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && project.AreaID != nil && *project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only report incidents for projects in your area")
-			return
+		if userAreaID != nil && project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only report incidents for projects in your area")
+				return
+			}
 		}
 	}
 
@@ -254,9 +257,12 @@ func UpdateIncident(c *gin.Context) {
 		}
 	} else if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && incident.Project.AreaID != nil && *incident.Project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only update incidents for projects in your area")
-			return
+		if userAreaID != nil && incident.Project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *incident.Project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only update incidents for projects in your area")
+				return
+			}
 		}
 	}
 
@@ -325,9 +331,12 @@ func ResolveIncident(c *gin.Context) {
 	// Admin solo puede resolver incidentes de proyectos de su área
 	if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && incident.Project.AreaID != nil && *incident.Project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only resolve incidents for projects in your area")
-			return
+		if userAreaID != nil && incident.Project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *incident.Project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only resolve incidents for projects in your area")
+				return
+			}
 		}
 	}
 
@@ -387,9 +396,12 @@ func DeleteIncident(c *gin.Context) {
 	// Admin solo puede eliminar incidentes de proyectos de su área
 	if role == models.RoleAdmin {
 		userAreaID, _ := c.Get("user_area_id")
-		if userAreaID != nil && incident.Project.AreaID != nil && *incident.Project.AreaID != userAreaID.(uint) {
-			utils.ErrorResponse(c, 403, "Can only delete incidents for projects in your area")
-			return
+		if userAreaID != nil && incident.Project.AreaID != nil {
+			areaID, ok := userAreaID.(*uint)
+			if ok && areaID != nil && *incident.Project.AreaID != *areaID {
+				utils.ErrorResponse(c, 403, "Can only delete incidents for projects in your area")
+				return
+			}
 		}
 	}
 

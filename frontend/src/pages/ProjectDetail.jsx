@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { projectsAPI, tasksAPI, usersAPI } from "@/api";
+import {
+  projectsAPI,
+  tasksAPI,
+  usersAPI,
+  getProjectRequirements,
+  getProjectIncidents,
+} from "@/api";
+import { getProcesses } from "@/api/processes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,21 +18,31 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  FolderKanban,
   TrendingUp,
   Users,
   MessageSquare,
-  ListTodo,
   FileText,
   AlertTriangle,
+  Plus,
+  Activity,
 } from "lucide-react";
-import TaskBoard from "../components/tasks/TaskBoard";
-import TaskFormDialog from "../components/tasks/TaskFormDialog";
 import CommentSection from "../components/tasks/CommentSection";
-import RequirementsList from "../components/requirements/RequirementsList";
-import IncidentsList from "../components/incidents/IncidentsList";
+import RequirementForm from "../components/requirements/RequirementForm";
+import IncidentForm from "../components/incidents/IncidentForm";
+import ActivityForm from "../components/activities/ActivityForm";
+import { ProcessCardsGrid } from "@/components/common/ProcessCard";
 import { useToast } from "@/hooks/use-toast";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import {
+  createRequirement,
+  deleteRequirement,
+  updateRequirement,
+} from "@/api/requirements";
+import {
+  createIncident,
+  deleteIncident,
+  updateIncident,
+} from "@/api/incidents";
 
 const STATUS_CONFIG = {
   unassigned: { label: "Sin asignar", color: "bg-gray-100 text-gray-800" },
@@ -41,9 +58,18 @@ export default function ProjectDetail() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showTaskDialog, setShowTaskDialog] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [initialStatus, setInitialStatus] = useState("backlog");
+
+  // Estados para Activities
+  const [showActivityForm, setShowActivityForm] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
+
+  // Estados para Requirements
+  const [showRequirementForm, setShowRequirementForm] = useState(false);
+  const [editingRequirement, setEditingRequirement] = useState(null);
+
+  // Estados para Incidents
+  const [showIncidentForm, setShowIncidentForm] = useState(false);
+  const [editingIncident, setEditingIncident] = useState(null);
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ["projects", id],
@@ -57,6 +83,30 @@ export default function ProjectDetail() {
     enabled: !!id,
   });
 
+  // Query para Requirements
+  const {
+    data: requirementsData,
+    isLoading: requirementsLoading,
+    refetch: refetchRequirements,
+  } = useQuery({
+    queryKey: ["requirements", id],
+    queryFn: () => getProjectRequirements(id),
+    enabled: !!id,
+  });
+  const requirements = requirementsData?.data || [];
+
+  // Query para Incidents
+  const {
+    data: incidentsData,
+    isLoading: incidentsLoading,
+    refetch: refetchIncidents,
+  } = useQuery({
+    queryKey: ["incidents", id],
+    queryFn: () => getProjectIncidents(id),
+    enabled: !!id,
+  });
+  const incidents = incidentsData?.data || [];
+
   const { data: areaUsers = [] } = useQuery({
     queryKey: ["users", { area_id: project?.area_id }],
     queryFn: () => usersAPI.getAll({ area_id: project?.area_id }),
@@ -65,15 +115,113 @@ export default function ProjectDetail() {
       (user?.role === "admin" || user?.role === "superadmin"),
   });
 
-  const handleCreateTask = (status = "backlog") => {
-    setSelectedTask(null);
-    setInitialStatus(status);
-    setShowTaskDialog(true);
+  // Handlers para Requirements
+  const handleCreateRequirement = async (data) => {
+    try {
+      await createRequirement({ ...data, project_id: parseInt(id) });
+      refetchRequirements();
+      setShowRequirementForm(false);
+      toast({ title: "Requerimiento creado exitosamente" });
+    } catch (err) {
+      toast({ title: "Error al crear requerimiento", variant: "destructive" });
+    }
   };
 
-  const handleEditTask = (task) => {
-    setSelectedTask(task);
-    setShowTaskDialog(true);
+  const handleRequirementClick = (requirement) => {
+    // Navegar al proceso del requerimiento
+    if (requirement.process_id) {
+      navigate(`/process/${requirement.process_id}`);
+    } else {
+      // Si no tiene proceso, abrir el editor
+      setEditingRequirement(requirement);
+      setShowRequirementForm(true);
+    }
+  };
+
+  const handleEditRequirement = (requirement) => {
+    setEditingRequirement(requirement);
+    setShowRequirementForm(true);
+  };
+
+  const handleDeleteRequirement = async (requirementId) => {
+    if (!confirm("¿Estás seguro de eliminar este requerimiento?")) return;
+    try {
+      await deleteRequirement(requirementId);
+      refetchRequirements();
+      toast({ title: "Requerimiento eliminado" });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar requerimiento",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handlers para Incidents
+  const handleCreateIncident = async (data) => {
+    try {
+      await createIncident({ ...data, project_id: parseInt(id) });
+      refetchIncidents();
+      setShowIncidentForm(false);
+      toast({ title: "Incidente creado exitosamente" });
+    } catch (err) {
+      toast({ title: "Error al crear incidente", variant: "destructive" });
+    }
+  };
+
+  const handleIncidentClick = (incident) => {
+    // Navegar al proceso del incidente
+    if (incident.process_id) {
+      navigate(`/process/${incident.process_id}`);
+    } else {
+      // Si no tiene proceso, abrir el editor
+      setEditingIncident(incident);
+      setShowIncidentForm(true);
+    }
+  };
+
+  const handleEditIncident = (incident) => {
+    setEditingIncident(incident);
+    setShowIncidentForm(true);
+  };
+
+  const handleDeleteIncident = async (incidentId) => {
+    if (!confirm("¿Estás seguro de eliminar este incidente?")) return;
+    try {
+      await deleteIncident(incidentId);
+      refetchIncidents();
+      toast({ title: "Incidente eliminado" });
+    } catch (err) {
+      toast({ title: "Error al eliminar incidente", variant: "destructive" });
+    }
+  };
+
+  // Handlers para Activities
+  const handleCreateActivity = async (data) => {
+    try {
+      await tasksAPI.create({ ...data, project_id: parseInt(id) });
+      queryClient.invalidateQueries(["tasks", { project_id: id }]);
+      setShowActivityForm(false);
+      toast({ title: "Actividad creada exitosamente" });
+    } catch (err) {
+      toast({ title: "Error al crear actividad", variant: "destructive" });
+    }
+  };
+
+  const handleActivityClick = (activity) => {
+    // Navegar al proceso de la actividad
+    if (activity.process_id) {
+      navigate(`/process/${activity.process_id}`);
+    } else {
+      // Si no tiene proceso, abrir el editor
+      setEditingActivity(activity);
+      setShowActivityForm(true);
+    }
+  };
+
+  const handleEditActivity = (activity) => {
+    setEditingActivity(activity);
+    setShowActivityForm(true);
   };
 
   if (projectLoading) {
@@ -265,25 +413,21 @@ export default function ProjectDetail() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
-                Resumen de Tareas
+                Resumen del Proyecto
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total de tareas:</span>
+                <span className="text-muted-foreground">Requerimientos:</span>
+                <span className="font-bold">{requirements.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Incidentes:</span>
+                <span className="font-bold">{incidents.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Actividades:</span>
                 <span className="font-bold">{tasks.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Backlog:</span>
-                <span className="font-medium">
-                  {tasks.filter((t) => t.status === "backlog").length}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">En progreso:</span>
-                <span className="font-medium">
-                  {tasks.filter((t) => t.status === "in_progress").length}
-                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Completadas:</span>
@@ -295,23 +439,23 @@ export default function ProjectDetail() {
           </Card>
         </div>
 
-        {/* Tasks Kanban and Comments */}
-        <Tabs defaultValue="tasks" className="w-full">
+        {/* REQ / INC / ACT Cards Grid */}
+        <Tabs defaultValue="requirements" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="tasks" className="flex items-center gap-2">
-              <ListTodo className="h-4 w-4" />
-              Tareas ({tasks.length})
-            </TabsTrigger>
             <TabsTrigger
               value="requirements"
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
-              Requerimientos
+              REQ ({requirements.length})
             </TabsTrigger>
             <TabsTrigger value="incidents" className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
-              Incidentes
+              INC ({incidents.length})
+            </TabsTrigger>
+            <TabsTrigger value="activities" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              ACT ({tasks.length})
             </TabsTrigger>
             <TabsTrigger value="comments" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
@@ -319,68 +463,97 @@ export default function ProjectDetail() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="tasks" className="mt-6">
+          <TabsContent value="requirements" className="mt-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <FolderKanban className="w-5 h-5" />
-                  Tablero de Tareas (Planner)
+                  <FileText className="w-5 h-5 text-purple-600" />
+                  Requerimientos del Proyecto
                 </CardTitle>
+                {canEdit && (
+                  <Button
+                    onClick={() => {
+                      setEditingRequirement(null);
+                      setShowRequirementForm(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo Requerimiento
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
-                <TaskBoard
-                  tasks={tasks}
-                  onEditTask={handleEditTask}
-                  onCreateTask={handleCreateTask}
-                  users={areaUsers}
-                  isLoading={tasksLoading}
+                <ProcessCardsGrid
+                  items={requirements}
+                  type="requirement"
+                  onItemClick={handleRequirementClick}
+                  emptyMessage="No hay requerimientos. Crea el primero para comenzar."
+                  loading={requirementsLoading}
                 />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="requirements" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">
-                Requerimientos del Proyecto
-              </h3>
-              <Button onClick={() => navigate(`/projects/${id}/requirements`)}>
-                Ver Todos
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Gestiona los requerimientos del proyecto.
-              <span className="ml-2">
-                <Button
-                  variant="link"
-                  className="p-0 h-auto"
-                  onClick={() => navigate(`/projects/${id}/requirements`)}
-                >
-                  Ir a Requerimientos →
-                </Button>
-              </span>
-            </p>
+          <TabsContent value="incidents" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  Incidentes del Proyecto
+                </CardTitle>
+                {canEdit && (
+                  <Button
+                    onClick={() => {
+                      setEditingIncident(null);
+                      setShowIncidentForm(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Reportar Incidente
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                <ProcessCardsGrid
+                  items={incidents}
+                  type="incident"
+                  onItemClick={handleIncidentClick}
+                  emptyMessage="No hay incidentes reportados."
+                  loading={incidentsLoading}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          <TabsContent value="incidents" className="mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Incidentes del Proyecto</h3>
-              <Button onClick={() => navigate(`/projects/${id}/incidents`)}>
-                Ver Todos
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Gestiona los incidentes reportados para este proyecto.
-              <span className="ml-2">
-                <Button
-                  variant="link"
-                  className="p-0 h-auto"
-                  onClick={() => navigate(`/projects/${id}/incidents`)}
-                >
-                  Ir a Incidentes →
-                </Button>
-              </span>
-            </p>
+          <TabsContent value="activities" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-emerald-600" />
+                  Actividades del Proyecto
+                </CardTitle>
+                {canEdit && (
+                  <Button
+                    onClick={() => {
+                      setEditingActivity(null);
+                      setShowActivityForm(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nueva Actividad
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                <ProcessCardsGrid
+                  items={tasks}
+                  type="activity"
+                  onItemClick={handleActivityClick}
+                  emptyMessage="No hay actividades. Crea la primera para comenzar."
+                  loading={tasksLoading}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="comments" className="mt-6">
@@ -388,17 +561,47 @@ export default function ProjectDetail() {
           </TabsContent>
         </Tabs>
 
-        {/* Task Dialog */}
-        <TaskFormDialog
-          open={showTaskDialog}
-          onOpenChange={(open) => {
-            setShowTaskDialog(open);
-            if (!open) setSelectedTask(null);
-          }}
-          task={selectedTask}
-          projectId={parseInt(id)}
-          users={areaUsers}
-        />
+        {/* Activity Form Dialog */}
+        {showActivityForm && (
+          <ActivityForm
+            open={showActivityForm}
+            onOpenChange={(open) => {
+              setShowActivityForm(open);
+              if (!open) setEditingActivity(null);
+            }}
+            activity={editingActivity}
+            projectId={parseInt(id)}
+            onSubmit={handleCreateActivity}
+          />
+        )}
+
+        {/* Requirement Form Dialog */}
+        {showRequirementForm && (
+          <RequirementForm
+            open={showRequirementForm}
+            onOpenChange={(open) => {
+              setShowRequirementForm(open);
+              if (!open) setEditingRequirement(null);
+            }}
+            requirement={editingRequirement}
+            projectId={parseInt(id)}
+            onSubmit={handleCreateRequirement}
+          />
+        )}
+
+        {/* Incident Form Dialog */}
+        {showIncidentForm && (
+          <IncidentForm
+            open={showIncidentForm}
+            onOpenChange={(open) => {
+              setShowIncidentForm(open);
+              if (!open) setEditingIncident(null);
+            }}
+            incident={editingIncident}
+            projectId={parseInt(id)}
+            onSubmit={handleCreateIncident}
+          />
+        )}
       </div>
     </div>
   );
