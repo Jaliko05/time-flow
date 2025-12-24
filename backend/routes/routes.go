@@ -123,6 +123,12 @@ func SetupRoutes(router *gin.Engine) {
 			// NEW: Processes routes
 			processes := protected.Group("/processes")
 			{
+				// List processes with filters (GET /processes)
+				processes.GET("", handlers.GetProcesses)
+
+				// Create process (POST /processes)
+				processes.POST("", middleware.CanManageProcesses(), handlers.CreateProcess)
+
 				// Nested routes MUST come before /:id routes
 				processes.POST("/:id/assign", middleware.CanManageProcesses(), handlers.AssignUserToProcess)
 				processes.DELETE("/:id/unassign/:user_id", middleware.CanManageProcesses(), handlers.RemoveUserFromProcess)

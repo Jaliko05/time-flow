@@ -33,6 +33,8 @@ import {
   PauseCircle,
   PlayCircle,
   ListTodo,
+  GitBranch,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -300,6 +302,18 @@ export default function ProcessActivityDetail() {
             <Paperclip className="h-4 w-4 inline mr-2" />
             Documentación ({documents.length})
           </button>
+          <button
+            onClick={() => setActiveTab("repos")}
+            className={cn(
+              "px-4 py-2 font-medium text-sm transition-colors",
+              activeTab === "repos"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <GitBranch className="h-4 w-4 inline mr-2" />
+            Repositorios
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -545,6 +559,64 @@ export default function ProcessActivityDetail() {
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
                   <p>No hay documentos adjuntos</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === "repos" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Repositorios</span>
+                {canEdit && (
+                  <Button variant="outline" size="sm">
+                    <GitBranch className="h-4 w-4 mr-2" />
+                    Vincular Repositorio
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activity.repositories && activity.repositories.length > 0 ? (
+                <div className="space-y-3">
+                  {activity.repositories.map((repo, idx) => (
+                    <a
+                      key={repo.id || idx}
+                      href={repo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="h-10 w-10 rounded-lg bg-gray-900 flex items-center justify-center">
+                        <GitBranch className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {repo.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {repo.url}
+                        </p>
+                        {repo.branch && (
+                          <Badge variant="outline" className="mt-1 text-xs">
+                            {repo.branch}
+                          </Badge>
+                        )}
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <GitBranch className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p className="mb-2">No hay repositorios vinculados</p>
+                  <p className="text-sm">
+                    Vincula repositorios de GitHub, GitLab o Bitbucket para
+                    rastrear el código relacionado.
+                  </p>
                 </div>
               )}
             </CardContent>

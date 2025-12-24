@@ -6,6 +6,9 @@ import Projects from "./Projects";
 import ProjectDetail from "./ProjectDetail";
 import ProcessDetail from "./ProcessDetail";
 import ProcessActivityDetail from "./ProcessActivityDetail";
+import RequirementDetail from "./RequirementDetail";
+import IncidentDetail from "./IncidentDetail";
+import TaskDetail from "./TaskDetail";
 import Requirements from "./Requirements";
 import Incidents from "./Incidents";
 import Settings from "./Settings";
@@ -154,6 +157,39 @@ function PagesContent() {
           <ProtectedRoute>
             <Layout currentPageName="Projects">
               <ProcessActivityDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/requirement/:requirementId"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <RequirementDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/incident/:incidentId"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <IncidentDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/task/:taskId"
+        element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <TaskDetail />
             </Layout>
           </ProtectedRoute>
         }

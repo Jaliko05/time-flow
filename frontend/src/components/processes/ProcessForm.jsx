@@ -26,17 +26,14 @@ export default function ProcessForm({
   onClose,
   onSubmit,
   initialData = null,
-  requirements = [],
   loading = false,
   error = null,
 }) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    requirementId: "",
-    status: "Activo",
-    startDate: "",
-    endDate: "",
+    estimated_hours: "",
+    status: "pending",
   });
 
   useEffect(() => {
@@ -44,21 +41,15 @@ export default function ProcessForm({
       setFormData({
         name: initialData.name || "",
         description: initialData.description || "",
-        requirementId: initialData.requirementId?.toString() || "",
-        status: initialData.status || "Activo",
-        startDate: initialData.startDate
-          ? initialData.startDate.split("T")[0]
-          : "",
-        endDate: initialData.endDate ? initialData.endDate.split("T")[0] : "",
+        estimated_hours: initialData.estimated_hours?.toString() || "",
+        status: initialData.status || "pending",
       });
     } else {
       setFormData({
         name: "",
         description: "",
-        requirementId: "",
-        status: "Activo",
-        startDate: "",
-        endDate: "",
+        estimated_hours: "",
+        status: "pending",
       });
     }
   }, [initialData, open]);
@@ -74,12 +65,12 @@ export default function ProcessForm({
     e.preventDefault();
 
     const submitData = {
-      ...formData,
-      requirementId: formData.requirementId
-        ? parseInt(formData.requirementId)
-        : null,
-      startDate: formData.startDate || null,
-      endDate: formData.endDate || null,
+      name: formData.name,
+      description: formData.description,
+      estimated_hours: formData.estimated_hours
+        ? parseFloat(formData.estimated_hours)
+        : 0,
+      status: formData.status,
     };
 
     onSubmit(submitData);
@@ -87,7 +78,7 @@ export default function ProcessForm({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Editar Proceso" : "Nuevo Proceso"}
@@ -131,30 +122,23 @@ export default function ProcessForm({
             />
           </div>
 
-          {/* Requirement */}
+          {/* Estimated Hours */}
           <div className="space-y-2">
-            <Label htmlFor="requirement">Requerimiento (Opcional)</Label>
-            <Select
-              value={formData.requirementId}
-              onValueChange={(value) => handleChange("requirementId", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar requerimiento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Sin requerimiento</SelectItem>
-                {requirements.map((req) => (
-                  <SelectItem key={req.id} value={req.id.toString()}>
-                    REQ-{req.id} - {req.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="estimated_hours">Horas Estimadas</Label>
+            <Input
+              id="estimated_hours"
+              type="number"
+              min="0"
+              step="0.5"
+              value={formData.estimated_hours}
+              onChange={(e) => handleChange("estimated_hours", e.target.value)}
+              placeholder="0"
+            />
           </div>
 
           {/* Status */}
           <div className="space-y-2">
-            <Label htmlFor="status">Estado *</Label>
+            <Label htmlFor="status">Estado</Label>
             <Select
               value={formData.status}
               onValueChange={(value) => handleChange("status", value)}
@@ -163,42 +147,20 @@ export default function ProcessForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Activo">Activo</SelectItem>
-                <SelectItem value="En Pausa">En Pausa</SelectItem>
-                <SelectItem value="Completado">Completado</SelectItem>
-                <SelectItem value="Cancelado">Cancelado</SelectItem>
+                <SelectItem value="pending">Pendiente</SelectItem>
+                <SelectItem value="in_progress">En Progreso</SelectItem>
+                <SelectItem value="on_hold">En Pausa</SelectItem>
+                <SelectItem value="completed">Completado</SelectItem>
+                <SelectItem value="cancelled">Cancelado</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Fecha Inicio</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => handleChange("startDate", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Fecha Fin</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => handleChange("endDate", e.target.value)}
-                min={formData.startDate}
-              />
-            </div>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !formData.name}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {initialData ? "Actualizar" : "Crear"}
             </Button>

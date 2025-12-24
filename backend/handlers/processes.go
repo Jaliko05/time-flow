@@ -10,6 +10,143 @@ import (
 	"github.com/jaliko05/time-flow/utils"
 )
 
+// GetProcesses godoc
+// @Summary Get processes with filters
+// @Description Get list of processes with optional filters
+// @Tags processes
+// @Produce json
+// @Security BearerAuth
+// @Param requirement_id query int false "Filter by requirement ID"
+// @Param incident_id query int false "Filter by incident ID"
+// @Param activity_id query int false "Filter by activity ID"
+// @Param status query string false "Filter by status"
+// @Success 200 {object} utils.Response{data=[]models.Process}
+// @Failure 401 {object} utils.Response
+// @Router /processes [get]
+func GetProcesses(c *gin.Context) {
+	query := config.DB.Preload("Creator").
+		Preload("Requirement").
+		Preload("Incident").
+		Preload("AssignedUsers").
+		Preload("Activities").
+		Preload("Activities.AssignedUser")
+
+	// Filtro por requirement_id
+	if reqIDStr := c.Query("requirement_id"); reqIDStr != "" {
+		if reqID, err := strconv.ParseUint(reqIDStr, 10, 32); err == nil {
+			query = query.Where("requirement_id = ?", uint(reqID))
+		}
+	}
+
+	// Filtro por incident_id
+	if incIDStr := c.Query("incident_id"); incIDStr != "" {
+		if incID, err := strconv.ParseUint(incIDStr, 10, 32); err == nil {
+			query = query.Where("incident_id = ?", uint(incID))
+		}
+	}
+
+	// Filtro por activity_id
+	if actIDStr := c.Query("activity_id"); actIDStr != "" {
+		if actID, err := strconv.ParseUint(actIDStr, 10, 32); err == nil {
+			query = query.Where("activity_id = ?", uint(actID))
+		}
+	}
+
+	// Filtro por status
+	if status := c.Query("status"); status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	var processes []models.Process
+	if err := query.Order("created_at DESC").Find(&processes).Error; err != nil {
+		utils.ErrorResponse(c, 500, "Failed to retrieve processes")
+		return
+	}
+
+	utils.SuccessResponse(c, 200, "Processes retrieved successfully", processes)
+}
+
+// CreateProcess godoc
+// @Summary Create a new process
+// @Description Create a new process optionally linked to requirement, incident, or activity
+// @Tags processes
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param process body CreateProcessGenericRequest true "Process data"
+// @Success 201 {object} utils.Response{data=models.Process}
+// @Failure 400 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Router /processes [post]
+func CreateProcess(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+
+	role := userRole.(models.Role)
+	if role == models.RoleUser {
+		utils.ErrorResponse(c, 403, "Only admins can create processes")
+		return
+	}
+
+	type CreateProcessGenericRequest struct {
+		Name           string  `json:"name" binding:"required"`
+		Description    string  `json:"description"`
+		EstimatedHours float64 `json:"estimated_hours"`
+		Status         string  `json:"status"`
+		RequirementID  *uint   `json:"requirement_id"`
+		IncidentID     *uint   `json:"incident_id"`
+		ActivityID     *uint   `json:"activity_id"`
+		UserIDs        []uint  `json:"user_ids"`
+	}
+
+	var req CreateProcessGenericRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, 400, err.Error())
+		return
+	}
+
+	// Crear proceso
+	process := models.Process{
+		Name:           req.Name,
+		Description:    req.Description,
+		EstimatedHours: req.EstimatedHours,
+		Status:         models.ProcessStatus(req.Status),
+		RequirementID:  req.RequirementID,
+		IncidentID:     req.IncidentID,
+		ActivityID:     req.ActivityID,
+		CreatedBy:      userID.(uint),
+	}
+
+	if process.Status == "" {
+		process.Status = models.ProcessStatusPending
+	}
+
+	if err := config.DB.Create(&process).Error; err != nil {
+		utils.ErrorResponse(c, 500, "Failed to create process: "+err.Error())
+		return
+	}
+
+	// Asignar usuarios si se proporcionaron
+	if len(req.UserIDs) > 0 {
+		for _, userIDToAssign := range req.UserIDs {
+			var user models.User
+			if err := config.DB.First(&user, userIDToAssign).Error; err != nil {
+				continue
+			}
+			config.DB.Model(&process).Association("AssignedUsers").Append(&user)
+		}
+	}
+
+	// Cargar relaciones
+	config.DB.Preload("Creator").
+		Preload("Requirement").
+		Preload("Incident").
+		Preload("AssignedUsers").
+		First(&process, process.ID)
+
+	utils.SuccessResponse(c, 201, "Process created successfully", process)
+}
+
 // GetProcess godoc
 // @Summary Get process details
 // @Description Get detailed information about a specific process

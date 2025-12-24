@@ -31,6 +31,7 @@ const (
 type Task struct {
 	ID                uint           `gorm:"primarykey" json:"id"`
 	ProjectID         uint           `gorm:"not null;index:idx_project_status" json:"project_id"` // Composite index with status
+	ParentID          *uint          `gorm:"index" json:"parent_id,omitempty"`                    // Parent task for sub-tasks
 	Name              string         `gorm:"not null" json:"name"`
 	Description       string         `gorm:"type:text" json:"description"`
 	Status            TaskStatus     `gorm:"type:varchar(20);not null;default:'backlog';index:idx_project_status" json:"status"` // Composite index
@@ -51,6 +52,8 @@ type Task struct {
 
 	// Relations
 	Project         Project          `gorm:"foreignKey:ProjectID" json:"project,omitempty" swaggerignore:"true"`
+	Parent          *Task            `gorm:"foreignKey:ParentID" json:"parent,omitempty" swaggerignore:"true"`
+	SubTasks        []Task           `gorm:"foreignKey:ParentID" json:"sub_tasks,omitempty" swaggerignore:"true"`
 	Creator         User             `gorm:"foreignKey:CreatedBy" json:"creator,omitempty" swaggerignore:"true"`
 	Activities      []Activity       `gorm:"foreignKey:TaskID" json:"activities,omitempty" swaggerignore:"true"`
 	Comments        []Comment        `gorm:"foreignKey:TaskID" json:"comments,omitempty" swaggerignore:"true"`

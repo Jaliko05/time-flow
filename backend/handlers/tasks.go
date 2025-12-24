@@ -17,6 +17,7 @@ import (
 // @Produce json
 // @Security BearerAuth
 // @Param project_id query int false "Filter by project ID"
+// @Param parent_id query int false "Filter by parent task ID (for sub-tasks)"
 // @Param assigned_user_id query int false "Filter by assigned user ID"
 // @Param status query string false "Filter by status"
 // @Param priority query string false "Filter by priority"
@@ -28,7 +29,7 @@ func GetTasks(c *gin.Context) {
 	userRole, _ := c.Get("user_role")
 	userAreaID, _ := c.Get("user_area_id")
 
-	query := config.DB.Preload("Project").Preload("Project.Area").Preload("AssignedUser").Preload("Creator")
+	query := config.DB.Preload("Project").Preload("Project.Area").Preload("AssignedUsers").Preload("Creator").Preload("SubTasks")
 
 	role := userRole.(models.Role)
 
@@ -48,26 +49,33 @@ func GetTasks(c *gin.Context) {
 	// Apply query filters
 	if projectIDStr := c.Query("project_id"); projectIDStr != "" {
 		if projectID, err := strconv.ParseUint(projectIDStr, 10, 32); err == nil {
-			query = query.Where("project_id = ?", uint(projectID))
+			query = query.Where("tasks.project_id = ?", uint(projectID))
+		}
+	}
+
+	// Filter by parent_id (for sub-tasks)
+	if parentIDStr := c.Query("parent_id"); parentIDStr != "" {
+		if parentID, err := strconv.ParseUint(parentIDStr, 10, 32); err == nil {
+			query = query.Where("tasks.parent_id = ?", uint(parentID))
 		}
 	}
 
 	if assignedUserIDStr := c.Query("assigned_user_id"); assignedUserIDStr != "" {
 		if assignedUserID, err := strconv.ParseUint(assignedUserIDStr, 10, 32); err == nil {
-			query = query.Where("assigned_user_id = ?", uint(assignedUserID))
+			query = query.Where("tasks.assigned_user_id = ?", uint(assignedUserID))
 		}
 	}
 
 	if status := c.Query("status"); status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("tasks.status = ?", status)
 	}
 
 	if priority := c.Query("priority"); priority != "" {
-		query = query.Where("priority = ?", priority)
+		query = query.Where("tasks.priority = ?", priority)
 	}
 
 	var tasks []models.Task
-	if err := query.Order("\"order\" ASC, created_at DESC").Find(&tasks).Error; err != nil {
+	if err := query.Order("tasks.\"order\" ASC, tasks.created_at DESC").Find(&tasks).Error; err != nil {
 		utils.ErrorResponse(c, 500, "Failed to retrieve tasks")
 		return
 	}
@@ -93,7 +101,7 @@ func GetTask(c *gin.Context) {
 	userAreaID, _ := c.Get("user_area_id")
 
 	var task models.Task
-	query := config.DB.Preload("Project").Preload("Project.Area").Preload("AssignedUser").Preload("Creator")
+	query := config.DB.Preload("Project").Preload("Project.Area").Preload("AssignedUsers").Preload("Creator")
 
 	if err := query.First(&task, id).Error; err != nil {
 		utils.ErrorResponse(c, 404, "Task not found")
@@ -196,6 +204,7 @@ func CreateTask(c *gin.Context) {
 
 	task := models.Task{
 		ProjectID:      req.ProjectID,
+		ParentID:       req.ParentID,
 		Name:           req.Name,
 		Description:    req.Description,
 		Priority:       req.Priority,
@@ -226,7 +235,7 @@ func CreateTask(c *gin.Context) {
 	}
 
 	// Reload with relations
-	config.DB.Preload("Project").Preload("AssignedUser").Preload("Creator").First(&task, task.ID)
+	config.DB.Preload("Project").Preload("AssignedUsers").Preload("Creator").Preload("SubTasks").First(&task, task.ID)
 
 	utils.SuccessResponse(c, 201, "Task created successfully", task)
 }
@@ -349,7 +358,7 @@ func UpdateTask(c *gin.Context) {
 	}
 
 	// Reload with relations
-	config.DB.Preload("Project").Preload("AssignedUser").Preload("Creator").First(&task, task.ID)
+	config.DB.Preload("Project").Preload("AssignedUsers").Preload("Creator").First(&task, task.ID)
 
 	utils.SuccessResponse(c, 200, "Task updated successfully", task)
 }
@@ -419,7 +428,7 @@ func UpdateTaskStatus(c *gin.Context) {
 	}
 
 	// Reload with relations
-	config.DB.Preload("Project").Preload("AssignedUser").Preload("Creator").First(&task, task.ID)
+	config.DB.Preload("Project").Preload("AssignedUsers").Preload("Creator").First(&task, task.ID)
 
 	utils.SuccessResponse(c, 200, "Task status updated successfully", task)
 }

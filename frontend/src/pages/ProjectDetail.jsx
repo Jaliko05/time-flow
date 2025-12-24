@@ -128,14 +128,8 @@ export default function ProjectDetail() {
   };
 
   const handleRequirementClick = (requirement) => {
-    // Navegar al proceso del requerimiento
-    if (requirement.process_id) {
-      navigate(`/process/${requirement.process_id}`);
-    } else {
-      // Si no tiene proceso, abrir el editor
-      setEditingRequirement(requirement);
-      setShowRequirementForm(true);
-    }
+    // Navegar al detalle del requerimiento (muestra sus procesos)
+    navigate(`/requirement/${requirement.id}`);
   };
 
   const handleEditRequirement = (requirement) => {
@@ -170,14 +164,8 @@ export default function ProjectDetail() {
   };
 
   const handleIncidentClick = (incident) => {
-    // Navegar al proceso del incidente
-    if (incident.process_id) {
-      navigate(`/process/${incident.process_id}`);
-    } else {
-      // Si no tiene proceso, abrir el editor
-      setEditingIncident(incident);
-      setShowIncidentForm(true);
-    }
+    // Navegar al detalle del incidente (muestra sus procesos)
+    navigate(`/incident/${incident.id}`);
   };
 
   const handleEditIncident = (incident) => {
@@ -209,14 +197,8 @@ export default function ProjectDetail() {
   };
 
   const handleActivityClick = (activity) => {
-    // Navegar al proceso de la actividad
-    if (activity.process_id) {
-      navigate(`/process/${activity.process_id}`);
-    } else {
-      // Si no tiene proceso, abrir el editor
-      setEditingActivity(activity);
-      setShowActivityForm(true);
-    }
+    // Navegar al detalle de la tarea (muestra sus actividades directamente)
+    navigate(`/task/${activity.id}`);
   };
 
   const handleEditActivity = (activity) => {

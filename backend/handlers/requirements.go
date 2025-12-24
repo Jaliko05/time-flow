@@ -98,7 +98,8 @@ func GetRequirement(c *gin.Context) {
 	if err := config.DB.Preload("Project").
 		Preload("Creator").
 		Preload("Processes").
-		Preload("Processes.Assignments").
+		Preload("Processes.AssignedUsers").
+		Preload("Processes.Activities").
 		First(&requirement, uint(id)).Error; err != nil {
 		utils.ErrorResponse(c, 404, "Requirement not found")
 		return

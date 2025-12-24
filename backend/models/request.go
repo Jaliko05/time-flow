@@ -105,6 +105,7 @@ type UpdateProjectStatusRequest struct {
 
 type CreateTaskRequest struct {
 	ProjectID      uint         `json:"project_id" binding:"required"`
+	ParentID       *uint        `json:"parent_id"`
 	Name           string       `json:"name" binding:"required"`
 	Description    string       `json:"description"`
 	Priority       TaskPriority `json:"priority" binding:"required,oneof=low medium high urgent"`

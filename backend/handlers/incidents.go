@@ -102,7 +102,8 @@ func GetIncident(c *gin.Context) {
 		Preload("Reporter").
 		Preload("Resolver").
 		Preload("Processes").
-		Preload("Processes.Assignments").
+		Preload("Processes.AssignedUsers").
+		Preload("Processes.Activities").
 		First(&incident, uint(id)).Error; err != nil {
 		utils.ErrorResponse(c, 404, "Incident not found")
 		return
